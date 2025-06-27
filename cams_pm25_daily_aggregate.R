@@ -27,7 +27,7 @@ for (d in unique(df$date)) {
   cli_alert_info("Aggregating...")
   nc_agg <- app(
     x = nc,
-    fun = sum,
+    fun = max,
     filename = glue(
       "{daily_data_folder}/cams_pm25_{substr(d,0,4)}{substr(d,6,7)}{substr(d,9,10)}_sum.nc"
     ),
