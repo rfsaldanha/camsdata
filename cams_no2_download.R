@@ -8,8 +8,9 @@ library(cli)
 wf_set_key(key = Sys.getenv("era5_API_Key"))
 
 # Parameters
-dir_data <- "/media/raphaelsaldanha/lacie/latam_cams_pm25"
-dates <- as.character(seq(ymd("2024-01-01"), ymd("2024-12-31"), by = "1 day"))
+dir_data <- "/media/raphaelsaldanha/lacie/cams_no2"
+dates <- as.character(seq(ymd("2003-01-01"), ymd("2024-12-31"), by = "1 day"))
+dates <- rev(dates)
 times <- c(
   "00:00",
   "03:00",
@@ -23,10 +24,10 @@ times <- c(
 
 for (d in dates) {
   for (t in times) {
-    cli_h1(glue("CAMS PM2.5 {d} {t}"))
+    cli_h1(glue("CAMS NO2 {d} {t}"))
 
     file_name <- glue(
-      "latam_cams_pm25_{substr(d,0,4)}{substr(d,6,7)}{substr(d,9,10)}_{substr(t,0,2)}{substr(t,4,5)}.nc"
+      "cams_no2_{substr(d,0,4)}{substr(d,6,7)}{substr(d,9,10)}_{substr(t,0,2)}{substr(t,4,5)}.nc"
     )
 
     if (file.exists(paste0(dir_data, "/", file_name))) {
@@ -36,14 +37,16 @@ for (d in dates) {
 
     request <- list(
       dataset_short_name = "cams-global-reanalysis-eac4",
-      variable = "particulate_matter_2.5um",
+      variable = "total_column_nitrogen_dioxide",
       date = glue("{d}/{d}"),
-      time = "00:00",
+      time = t,
       data_format = "netcdf",
       download_format = "unarchived",
-      area = c(33.28, -118.47, -56.65, -34.1),
+      # area = c(33.28, -118.47, -56.65, -34.1),
       target = file_name
     )
+
+    Sys.sleep(1)
 
     file <- wf_request(
       request = request,

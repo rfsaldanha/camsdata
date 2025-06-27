@@ -29,21 +29,10 @@ for (d in unique(df$date)) {
     x = nc,
     fun = sum,
     filename = glue(
-      "{daily_data_folder}/latam_cams_pm25_{substr(d,0,4)}{substr(d,6,7)}{substr(d,9,10)}_sum.nc"
+      "{daily_data_folder}/cams_pm25_{substr(d,0,4)}{substr(d,6,7)}{substr(d,9,10)}_sum.nc"
     ),
     overwrite = TRUE
   )
-
-  d <- as.Date(d)
-
-  # cli_alert_info("Writing to disk...")
-  # writeCDF(
-  #   x = nc_agg,
-  #   filename = glue(
-  #     "{daily_data_folder}/latam_cams_pm25_{substr(d,0,4)}{substr(d,6,7)}{substr(d,9,10)}_sum.nc"
-  #   ),
-  #   overwrite = TRUE
-  # )
 
   cli_alert_success("Done!")
 }
