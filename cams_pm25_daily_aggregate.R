@@ -5,34 +5,29 @@ library(stringr)
 library(glue)
 library(lubridate)
 library(cli)
+library(tools)
+library(purrr)
 
-# Parameters
-hourly_data_folder <- "/media/raphaelsaldanha/lacie/latam_cams_pm25"
-daily_data_folder <- "/media/raphaelsaldanha/lacie/latam_cams_pm25_daily_agg"
+# Folders
+hourly_data_folder <- "/media/raphaelsaldanha/lacie/cams_pm25/"
+daily_data_folder <- "/media/raphaelsaldanha/lacie/cams_pm25_daily_agg/"
 
 # List files
 files <- list.files(hourly_data_folder, full.names = TRUE, pattern = "*.nc")
-df <- tibble(
-  files = files,
-  date = as_date(str_sub(files, -16, -9))
-)
 
-for (d in unique(df$date)) {
-  cli_h1(glue("{as.Date(d)}"))
-
-  tmp <- subset(df, date == d)
-
-  nc <- rast(x = tmp$files)
-
-  cli_alert_info("Aggregating...")
-  nc_agg <- app(
-    x = nc,
-    fun = max,
+# Functions
+agg <- function(x, fun) {
+  res <- app(
+    x = rast(x),
+    fun = fun,
     filename = glue(
-      "{daily_data_folder}/cams_pm25_{substr(d,0,4)}{substr(d,6,7)}{substr(d,9,10)}_sum.nc"
+      "{daily_data_folder}/{file_path_sans_ext(basename(x))}_{fun}.nc"
     ),
     overwrite = TRUE
   )
 
-  cli_alert_success("Done!")
+  return(res)
 }
+
+res_mean <- map(.x = files, .f = agg, fun = "mean", .progress = TRUE)
+res_max <- map(.x = files, .f = agg, fun = "max", .progress = TRUE)
