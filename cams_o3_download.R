@@ -10,12 +10,10 @@ library(fs)
 wf_set_key(key = Sys.getenv("era5_API_Key"))
 
 # Parameters
-dir_data <- "/media/raphaelsaldanha/lacie/cams_pm10"
+dir_data <- "/media/raphaelsaldanha/lacie/cams_03"
 dates <- as.character(seq(ymd("2003-01-01"), ymd("2024-12-31"), by = "1 day"))
 dates <- rev(dates)
 times <- c(
-  "00:00",
-  "03:00",
   "06:00",
   "09:00",
   "12:00",
@@ -25,10 +23,10 @@ times <- c(
 )
 
 for (d in dates) {
-  cli_h1(glue("CAMS PM10 {d}"))
+  cli_h1(glue("CAMS O3 {d}"))
 
   file_name <- glue(
-    "cams_pm10_{substr(d,0,4)}{substr(d,6,7)}{substr(d,9,10)}.nc"
+    "cams_o3_{substr(d,0,4)}{substr(d,6,7)}{substr(d,9,10)}.nc"
   )
 
   if (file.exists(paste0(dir_data, "/", file_name))) {
@@ -38,7 +36,7 @@ for (d in dates) {
 
   request <- list(
     dataset_short_name = "cams-global-reanalysis-eac4",
-    variable = "particulate_matter_10um",
+    variable = "total_column_ozone",
     date = glue("{d}/{d}"),
     time = times,
     data_format = "netcdf",

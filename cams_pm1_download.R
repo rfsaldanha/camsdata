@@ -57,6 +57,6 @@ for (d in dates) {
       )
     },
     interval = 1,
-    until = ~ is_file(.)
+    until = ~ is_file(as.character(.))
   )
 }

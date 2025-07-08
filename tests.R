@@ -15,7 +15,7 @@ res |>
   labs(title = "PM2.5 - Médias diárias", subtitle = "Cuiabá, MT")
 
 res |>
-  filter(code_muni == 3304557) |>
+  filter(code_muni == 5103403) |>
   filter(year(date) == 2024) |>
   mutate(date = floor_date(date, "month")) |>
   arrange(date) |>
