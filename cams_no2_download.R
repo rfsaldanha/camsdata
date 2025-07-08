@@ -3,6 +3,8 @@ library(ecmwfr)
 library(lubridate)
 library(glue)
 library(cli)
+library(retry)
+library(fs)
 
 # Token
 wf_set_key(key = Sys.getenv("era5_API_Key"))
@@ -45,11 +47,16 @@ for (d in dates) {
     target = file_name
   )
 
-  Sys.sleep(1)
-
-  file <- wf_request(
-    request = request,
-    transfer = TRUE,
-    path = dir_data
+  # Download file
+  retry(
+    expr = {
+      wf_request(
+        request = request,
+        transfer = TRUE,
+        path = dir_data
+      )
+    },
+    interval = 1,
+    until = ~ is_file(.)
   )
 }
