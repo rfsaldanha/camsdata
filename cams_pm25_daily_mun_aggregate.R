@@ -11,12 +11,14 @@ library(duckdb)
 
 # Database
 con <- dbConnect(duckdb(), "cams.duckdb")
+
 if (dbExistsTable(con, "pm25_mean_mean")) {
   dbRemoveTable(con, "pm25_mean_mean")
 }
 if (dbExistsTable(con, "pm25_max_mean")) {
   dbRemoveTable(con, "pm25_max_mean")
 }
+
 dbListTables(con)
 
 # Folders
@@ -89,7 +91,7 @@ dbExecute(
 
 dbExecute(
   con,
-  "COPY (SELECT * FROM 'pm25_max_mean') TO 'pm25_mean_mean.parquet' (FORMAT 'PARQUET')"
+  "COPY (SELECT * FROM 'pm25_max_mean') TO 'pm25_max_mean.parquet' (FORMAT 'PARQUET')"
 )
 
 # Database disconnect
