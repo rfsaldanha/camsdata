@@ -24,18 +24,22 @@ times <- c(
   "21:00"
 )
 
+# Download loop
 for (d in dates) {
   cli_h1(glue("CAMS PM2.5 {d}"))
 
+  # File name
   file_name <- glue(
     "cams_pm25_{substr(d,0,4)}{substr(d,6,7)}{substr(d,9,10)}.nc"
   )
 
+  # Check if file is already available
   if (file.exists(paste0(dir_data, "/", file_name))) {
     cli_alert_warning("File already exists. Going for next.")
     next
   }
 
+  # Declare request
   request <- list(
     dataset_short_name = "cams-global-reanalysis-eac4",
     variable = "particulate_matter_2.5um",
@@ -47,7 +51,7 @@ for (d in dates) {
     target = file_name
   )
 
-  # Download file
+  # Download file with retry
   retry(
     expr = {
       wf_request(

@@ -18,6 +18,9 @@ if (dbExistsTable(con, "pm25_mean_mean")) {
 if (dbExistsTable(con, "pm25_max_mean")) {
   dbRemoveTable(con, "pm25_max_mean")
 }
+if (dbExistsTable(con, "pm25_min_mean")) {
+  dbRemoveTable(con, "pm25_min_mean")
+}
 
 dbListTables(con)
 
@@ -25,6 +28,12 @@ dbListTables(con)
 daily_data_folder <- "/media/raphaelsaldanha/lacie/cams_pm25_daily_agg/"
 
 # List files
+files_min <- list.files(
+  daily_data_folder,
+  full.names = TRUE,
+  pattern = "min.nc$"
+)
+
 files_max <- list.files(
   daily_data_folder,
   full.names = TRUE,
@@ -83,6 +92,14 @@ res_max <- map(
   .progress = TRUE
 )
 
+res_min <- map(
+  .x = files_max,
+  .f = agg,
+  fun = "mean",
+  tb_name = "pm25_min_mean",
+  .progress = TRUE
+)
+
 # Export parquet file
 dbExecute(
   con,
@@ -92,6 +109,11 @@ dbExecute(
 dbExecute(
   con,
   "COPY (SELECT * FROM 'pm25_max_mean') TO 'pm25_max_mean.parquet' (FORMAT 'PARQUET')"
+)
+
+dbExecute(
+  con,
+  "COPY (SELECT * FROM 'pm25_min_mean') TO 'pm25_min_mean.parquet' (FORMAT 'PARQUET')"
 )
 
 # Database disconnect
