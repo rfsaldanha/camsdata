@@ -54,3 +54,4 @@ rsconnect/
 *.parquet
 *.csv
 *.zip
+*.nc
