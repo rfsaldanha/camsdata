@@ -1,4 +1,6 @@
 # Packages
+cli::cli_h1("CAMS forecast PM2.5 data download routine")
+cli::cli_alert_info("Loading packages...")
 library(ecmwfr)
 library(lubridate)
 library(glue)
@@ -6,12 +8,10 @@ library(cli)
 library(retry)
 library(fs)
 
-# Token
-wf_set_key(key = Sys.getenv("era5_API_Key"))
-
 # Parameters
-dir_data <- "/media/raphaelsaldanha/lacie/cams_forecast_pm25"
-date <- today()
+# dir_data <- "/media/raphaelsaldanha/lacie/cams_forecast_pm25"
+dir_data <- "~/Downloads/"
+date <- today() - 1
 time <- "00:00"
 leadtime_hour <- as.character(0:120)
 
@@ -30,11 +30,16 @@ request <- list(
   type = "forecast",
   data_format = "netcdf",
   download_format = "unarchived",
-  area = c(33.28, -118.47, -56.65, -34.1),
+  area = c(33, -118, -56, -30),
   target = file_name
 )
 
+# Token
+cli::cli_alert_info("Getting access token...")
+wf_set_key(key = Sys.getenv("era5_API_Key"))
+
 # Download file with retry
+cli::cli_alert_info("Requesting file...")
 retry(
   expr = {
     wf_request(
@@ -46,3 +51,5 @@ retry(
   interval = 1,
   until = ~ is_file(as.character(.))
 )
+
+cli_h1("END")

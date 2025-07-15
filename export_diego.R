@@ -39,12 +39,14 @@ pm25_monthly <- pm25 |>
   mutate(code_muni = as.numeric(substr(code_muni, 0, 6))) |>
   rename(cod6 = code_muni, ano_mes = date, pm25 = mean)
 
-write_csv2(x = pm25_monthly, file = "dados_pm25.csv")
+write_delim(x = pm25_monthly, file = "dados_pm25.csv", delim = ",")
 
 # Daily data
-pm25_daily <- pivot_wider(pm25) |>
+pm25_daily <- pm25 |>
+  filter(year(date) >= 2024) |>
+  pivot_wider() |>
   mutate(code_muni = as.numeric(substr(code_muni, 0, 6))) |>
   rename(cod6 = code_muni, ano_mes = date, med = mean) |>
   relocate(min, .before = med)
 
-write_csv2(x = pm25_daily, file = "dados_dia.csv")
+write_delim(x = pm25_daily, file = "dados_dia.csv", delim = ",")

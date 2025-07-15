@@ -1,4 +1,6 @@
 # Packages
+cli::cli_h1("CAMS forecast PM2.5 update database routine")
+cli::cli_alert_info("Loading packages...")
 library(dplyr)
 library(lubridate)
 library(glue)
@@ -15,24 +17,32 @@ library(duckdb)
 library(ggplot2)
 
 # Reference forecast file
-file <- "/media/raphaelsaldanha/lacie/cams_forecast_pm25/cams_forecast_pm25_20250709.nc"
+# file <- "/media/raphaelsaldanha/lacie/cams_forecast_pm25/cams_forecast_pm25_20250709.nc"
+file <- "~/Downloads/cams_forecast_pm25_20250714.nc"
+
+# Read CAMS file
+cli_alert_info("Reading CAMS forecast file...")
+rst <- terra::rast(file)
+cli_alert_info("Projecting raster file...")
+rst <- project(x = rst, "EPSG:4326")
 
 # Database
+cli_alert_info("Connecting to database...")
 con <- dbConnect(duckdb(), "cams_forecast.duckdb")
 tb_name <- "pm25_mun_forecast"
 if (dbExistsTable(con, "pm25_mun_forecast")) {
+  cli_alert_info("Deleting old table...")
   dbRemoveTable(con, "pm25_mun_forecast")
 }
 
 # Municipalities
-mun <- read_municipality(year = 2010, simplified = TRUE)
-mun <- st_transform(x = mun, crs = 4326)
+cli_alert_info("Reading geometries file...")
+# mun <- read_municipality(year = 2010, simplified = TRUE)
+# mun <- st_transform(x = mun, crs = 4326)
+# saveRDS(mun, "mun_epsg4326.rds")
+mun <- readRDS("mun_epsg4326.rds")
 
-# Read file
-rst <- terra::rast(file)
-rst <- project(x = rst, "EPSG:4326")
-
-# Function
+# Zonal statistic function
 agg <- function(rst, x, fun) {
   # Zonal statistic computation
   tmp <- exact_extract(x = rst[[x]], y = mun, fun = fun, progress = FALSE)
@@ -60,6 +70,7 @@ agg <- function(rst, x, fun) {
 }
 
 # Compute zonal mean
+cli_alert_info("Computing zonal mean...")
 res_mean <- map(
   .x = 1:121,
   .f = agg,
@@ -67,20 +78,14 @@ res_mean <- map(
   fun = "mean",
   .progress = TRUE
 )
+cli_alert_success("Done!")
 
-# Retrieve data
-tbl(con, tb_name) |>
-  filter(code_muni == 5107602) |>
-  arrange(date) |>
-  collect() |>
-  ggplot(aes(x = date, y = value)) +
-  ylim(0, NA) +
-  geom_line() +
-  labs(
-    title = "Previsão de PM2.5",
-    # subtitle = "Rio de Janeiro, RJ",
-    caption = "CAMS/Copernicus"
-  )
+# Check data
+cli_alert_info("Checking data...")
+tbl(con, tb_name) |> tally()
+tbl(con, tb_name) |> head()
 
 # Database disconnect
+cli_alert_info("Disconnecting database...")
 dbDisconnect(conn = con)
+cli_h1("END")
