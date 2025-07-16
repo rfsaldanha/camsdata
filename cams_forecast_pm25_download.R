@@ -58,6 +58,7 @@ retry(
 )
 
 # Save datestamp
+file_delete(list.files(path = "dir_data", pattern = "datestamp_"))
 datestamp <- path(dir_data, glue("datestamp_{format(date, '%Y%m%d')}"))
 system(glue("touch {datestamp}"))
 

@@ -21,6 +21,9 @@ library(ggplot2)
 dir_data <- "camsdata/"
 file <- path(dir_data, "cams_forecast_pm25.nc")
 
+# Date stamp
+date_stamp <- list.files(path = "dir_data", pattern = "datestamp_")[1]
+
 # Read CAMS file
 cli_alert_info("Reading CAMS forecast file...")
 rst <- terra::rast(file)
@@ -53,7 +56,7 @@ agg <- function(rst, x, fun) {
     code_muni = mun$code_muni,
     date = as_date(
       x = paste0(
-        str_sub(string = basename(file), start = 20, end = 27)
+        str_sub(string = date_stamp, start = 11, end = 18)
       ),
       format = "%Y%m%d"
     ),
