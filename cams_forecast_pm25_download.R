@@ -9,15 +9,15 @@ library(retry)
 library(fs)
 
 # Parameters
-# dir_data <- "/media/raphaelsaldanha/lacie/cams_forecast_pm25"
-dir_data <- "~/Downloads/"
-date <- today() - 1
+# dir_data <- "~/Downloads/"
+dir_data <- "~/dados/home/rfsaldanha/"
+date <- today()
 time <- "00:00"
 leadtime_hour <- as.character(0:120)
 
 # File name
 file_name <- glue(
-  "cams_forecast_pm25_{substr(date,0,4)}{substr(date,6,7)}{substr(date,9,10)}.nc"
+  "cams_forecast_pm25.nc"
 )
 
 # Declare request
