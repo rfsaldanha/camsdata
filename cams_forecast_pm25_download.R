@@ -57,4 +57,7 @@ retry(
   until = ~ is_file(as.character(.))
 )
 
+# Save timestamp
+system(glue("touch {dir_data}/timestamp_{format(date, '%Y%m%d')}"))
+
 cli_h1("END")
