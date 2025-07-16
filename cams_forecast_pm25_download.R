@@ -58,7 +58,7 @@ retry(
 )
 
 # Save datestamp
-datestamp <- path(dir_data, glue("timestamp_{format(date, '%Y%m%d')}"))
+datestamp <- path(dir_data, glue("datestamp_{format(date, '%Y%m%d')}"))
 system(glue("touch {datestamp}"))
 
 cli_h1("END")
