@@ -7,6 +7,7 @@ library(glue)
 library(cli)
 library(terra)
 library(sf)
+library(fs)
 library(tibble)
 library(stringr)
 library(purrr)
@@ -17,7 +18,8 @@ library(ggplot2)
 
 # Reference forecast file
 # file <- "~/Downloads/cams_forecast_pm25_20250715.nc"
-file <- "camsdata/cams_forecast_pm25.nc"
+dir_data <- "camsdata/"
+file <- path(dir_data, "cams_forecast_pm25.nc")
 
 # Read CAMS file
 cli_alert_info("Reading CAMS forecast file...")
@@ -27,7 +29,7 @@ rst <- project(x = rst, "EPSG:4326")
 
 # Database
 cli_alert_info("Connecting to database...")
-con <- dbConnect(duckdb(), "cams_forecast.duckdb")
+con <- dbConnect(duckdb(), path(dir_data, "cams_forecast.duckdb"))
 tb_name <- "pm25_mun_forecast"
 if (dbExistsTable(con, "pm25_mun_forecast")) {
   cli_alert_info("Deleting old table...")
@@ -39,7 +41,7 @@ cli_alert_info("Reading geometries file...")
 # mun <- geobr::read_municipality(year = 2010, simplified = TRUE)
 # mun <- st_transform(x = mun, crs = 4326)
 # saveRDS(mun, "mun_epsg4326.rds")
-mun <- readRDS("mun_epsg4326.rds")
+mun <- readRDS(path(dir_data, "mun_epsg4326.rds"))
 
 # Zonal statistic function
 agg <- function(rst, x, fun) {
