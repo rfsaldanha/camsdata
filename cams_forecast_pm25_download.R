@@ -57,7 +57,8 @@ retry(
   until = ~ is_file(as.character(.))
 )
 
-# Save timestamp
-system(glue("touch {dir_data}/timestamp_{format(date, '%Y%m%d')}"))
+# Save datestamp
+datestamp <- path(dir_data, glue("timestamp_{format(date, '%Y%m%d')}"))
+system(glue("touch {datestamp}"))
 
 cli_h1("END")
