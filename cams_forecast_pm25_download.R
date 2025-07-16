@@ -10,7 +10,7 @@ library(fs)
 
 # Parameters
 # dir_data <- "~/Downloads/"
-dir_data <- "~/dados/home/rfsaldanha/"
+dir_data <- "~/dados/home/rfsaldanha/camsdata/"
 date <- today()
 time <- "00:00"
 leadtime_hour <- as.character(0:120)
@@ -19,6 +19,9 @@ leadtime_hour <- as.character(0:120)
 file_name <- glue(
   "cams_forecast_pm25.nc"
 )
+
+# Remove old file
+file_delete(path(dir_data, file_name))
 
 # Declare request
 request <- list(

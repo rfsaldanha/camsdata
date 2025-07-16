@@ -17,7 +17,7 @@ library(ggplot2)
 
 # Reference forecast file
 # file <- "~/Downloads/cams_forecast_pm25_20250715.nc"
-file <- "~/dados/home/rfsaldanha/cams_forecast_pm25.nc"
+file <- "~/dados/home/rfsaldanha/camsdata/cams_forecast_pm25.nc"
 
 # Read CAMS file
 cli_alert_info("Reading CAMS forecast file...")
