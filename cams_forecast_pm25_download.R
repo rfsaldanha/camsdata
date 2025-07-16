@@ -10,7 +10,7 @@ library(fs)
 
 # Parameters
 # dir_data <- "~/Downloads/"
-dir_data <- "~/dados/home/rfsaldanha/camsdata/"
+dir_data <- "camsdata/"
 date <- today()
 time <- "00:00"
 leadtime_hour <- as.character(0:120)
