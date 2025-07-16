@@ -22,7 +22,7 @@ dir_data <- "camsdata/"
 file <- path(dir_data, "cams_forecast_pm25.nc")
 
 # Date stamp
-date_stamp <- list.files(path = "dir_data", pattern = "datestamp_")[1]
+date_stamp <- list.files(path = dir_data, pattern = "datestamp_")[1]
 
 # Read CAMS file
 cli_alert_info("Reading CAMS forecast file...")
