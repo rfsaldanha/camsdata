@@ -21,7 +21,9 @@ file_name <- glue(
 )
 
 # Remove old file
-file_delete(path(dir_data, file_name))
+if (file_exists(path(dir_data, file_name))) {
+  file_delete(path(dir_data, file_name))
+}
 
 # Declare request
 request <- list(
