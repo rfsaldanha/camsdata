@@ -55,3 +55,6 @@ rsconnect/
 *.csv
 *.zip
 *.nc
+
+# Datestamps
+datestamp_*
