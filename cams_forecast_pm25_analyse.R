@@ -52,18 +52,23 @@ agg <- function(rst, x, fun) {
   tmp <- exact_extract(x = rst[[x]], y = mun, fun = fun, progress = FALSE)
 
   # Table output with unit conversion and rounding
+  sel_date <- as_date(
+    x = paste0(
+      str_sub(string = date_stamp, start = 11, end = 18)
+    ),
+    format = "%Y%m%d"
+  )
+  sel_time <- as.numeric(str_sub(string = date_stamp, start = 20, end = 21))
+
   res <- tibble(
     code_muni = mun$code_muni,
-    date = as_date(
-      x = paste0(
-        str_sub(string = date_stamp, start = 11, end = 18)
-      ),
-      format = "%Y%m%d"
-    ),
+    date = sel_date,
     value = round(x = tmp * 1000000000, digits = 2), # kg/m3 to μg/m3
   ) |>
     mutate(
-      date = date + duration(x - 1, "hour"),
+      # The date and time of the forecast is the model run time (sel_time) plus the forecast depth.
+      # Depth = 1 equivales to hour 0, depth = 121 equivales to hour 120
+      date = date + duration(sel_time + (x - 1), "hour"),
       date = with_tz(date, "America/Sao_Paulo")
     )
 

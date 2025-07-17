@@ -8,12 +8,22 @@ library(cli)
 library(retry)
 library(fs)
 
-# Parameters
+# Download directory
 # dir_data <- "~/Downloads/"
 dir_data <- "camsdata/"
-date <- today() - 1
-time <- "00:00"
+
+# Forecast range, in hours
 leadtime_hour <- as.character(0:120)
+
+if (am(now(tzone = "UTC"))) {
+  # If am, select date time as yesterday 12 hour
+  date <- today() - 1
+  time <- "12:00"
+} else {
+  # Else, select date time as today 0 hour
+  date <- today()
+  time <- "00:00"
+}
 
 # File name
 file_name <- glue(
@@ -54,12 +64,13 @@ retry(
     )
   },
   interval = 1,
+  max_tries = 100,
   until = ~ is_file(as.character(.))
 )
 
 # Save datestamp
 file_delete(list.files(path = "dir_data", pattern = "datestamp_"))
 datestamp <- path(dir_data, glue("datestamp_{format(date, '%Y%m%d')}"))
-system(glue("touch {datestamp}"))
+system(glue("touch {datestamp}_{time}"))
 
 cli_h1("END")
