@@ -12,7 +12,7 @@ library(fs)
 # dir_data <- "~/Downloads/"
 dir_data <- "camsdata/"
 date <- today() - 1
-time <- "12:00"
+time <- "00:00"
 leadtime_hour <- as.character(0:120)
 
 # File name
