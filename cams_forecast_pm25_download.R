@@ -54,7 +54,7 @@ cli::cli_alert_info("Getting access token...")
 wf_set_key(key = Sys.getenv("era5_API_Key"))
 
 # Download file with retry
-cli::cli_alert_info("Requesting file...")
+cli::cli_alert_info("Requesting forecast file from {date} {time}...")
 retry(
   expr = {
     wf_request(
