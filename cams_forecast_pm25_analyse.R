@@ -31,13 +31,12 @@ cli_alert_info("Projecting raster file...")
 rst <- project(x = rst, "EPSG:4326")
 
 # Database
-cli_alert_info("Connecting to database...")
+cli_alert_info("Redefining database...")
+if (file_exists(path(dir_data, "cams_forecast.duckdb"))) {
+  file_delete(path(dir_data, "cams_forecast.duckdb"))
+}
 con <- dbConnect(duckdb(), path(dir_data, "cams_forecast.duckdb"))
 tb_name <- "pm25_mun_forecast"
-if (dbExistsTable(con, "pm25_mun_forecast")) {
-  cli_alert_info("Deleting old table...")
-  dbRemoveTable(con, "pm25_mun_forecast")
-}
 
 # Municipalities
 cli_alert_info("Reading geometries file...")
