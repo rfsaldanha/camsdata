@@ -70,7 +70,7 @@ retry(
 
 # Save datestamp
 file_delete(list.files(
-  path = "dir_data",
+  path = dir_data,
   pattern = "datestamp_",
   full.names = TRUE
 ))
