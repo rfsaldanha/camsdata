@@ -93,7 +93,7 @@ res_max <- map(
 )
 
 res_min <- map(
-  .x = files_max,
+  .x = files_min,
   .f = agg,
   fun = "mean",
   tb_name = "pm25_min_mean",
