@@ -116,5 +116,21 @@ dbExecute(
   "COPY (SELECT * FROM 'pm25_min_mean') TO 'pm25_min_mean.parquet' (FORMAT 'PARQUET')"
 )
 
+# Export CSV file
+dbExecute(
+  con,
+  "COPY (SELECT * FROM 'pm25_mean_mean') TO 'pm25_mean_mean.csv' (FORMAT 'CSV')"
+)
+
+dbExecute(
+  con,
+  "COPY (SELECT * FROM 'pm25_max_mean') TO 'pm25_max_mean.csv' (FORMAT 'CSV')"
+)
+
+dbExecute(
+  con,
+  "COPY (SELECT * FROM 'pm25_min_mean') TO 'pm25_min_mean.csv' (FORMAT 'CSV')"
+)
+
 # Database disconnect
 dbDisconnect(conn = con)
