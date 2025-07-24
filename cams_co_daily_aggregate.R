@@ -31,3 +31,4 @@ agg <- function(x, fun) {
 
 res_mean <- map(.x = files, .f = agg, fun = "mean", .progress = TRUE)
 res_max <- map(.x = files, .f = agg, fun = "max", .progress = TRUE)
+res_min <- map(.x = files, .f = agg, fun = "min", .progress = TRUE)
