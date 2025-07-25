@@ -63,7 +63,7 @@ cli_alert_info("Reading geometries file...")
 # mun <- geobr::read_municipality(year = 2010, simplified = TRUE)
 # mun <- st_transform(x = mun, crs = 4326)
 # saveRDS(mun, "mun_epsg4326.rds")
-mun <- readRDS("mun_epsg4326.rds")
+mun <- readRDS("/dados/home/rfsaldanha/camsdata/mun_epsg4326.rds")
 
 # Declare requests
 ## PM2.5
