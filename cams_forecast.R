@@ -30,13 +30,13 @@ leadtime_hour <- as.character(0:120)
 
 # Set update reference time
 if (am(now(tzone = "UTC"))) {
-  # If am, select date time as yesterday 12 hour
-  date <- today() - 1
-  time <- "12:00"
-} else {
-  # Else, select date time as today 0 hour
+  # If am, get data from today's 0 hour
   date <- today()
   time <- "00:00"
+} else {
+  # Else, if pm, get data from today's 12 hour
+  date <- today()
+  time <- "12:00"
 }
 
 cli_alert_info("Update refence: {date} {time}")
