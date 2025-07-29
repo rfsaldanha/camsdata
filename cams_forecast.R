@@ -9,6 +9,7 @@ library(cli)
 library(retry)
 library(fs)
 library(dplyr)
+library(readr)
 library(terra)
 library(sf)
 library(tibble)
@@ -398,6 +399,34 @@ cli_alert_success("Done!")
 cli_alert_info("Checking data...")
 tbl(con, tb_name_uv) |> tally()
 tbl(con, tb_name_uv) |> head()
+
+# Fetch bdqueimadas data
+bdq_base_url <- "https://dataserver-coids.inpe.br/queimadas/queimadas/focos/csv/diario/America_Sul/"
+bdq_file_names <- paste0(
+  "focos_diario_",
+  format(seq.Date(date - 2, date, by = "day"), "%Y%m%d"), # Today and last two days
+  ".csv"
+)
+bdq_urls <- paste0(bdq_base_url, bdq_file_names)
+
+bdq_focos <- data.frame()
+for (i in bdq_urls) {
+  # Try and retry download
+  bdq_focos <- retry(
+    expr = {
+      tmp <- read_csv(file = i) |>
+        filter(satelite %in% c("AQUA_M-M", "AQUA_M-T")) |>
+        select(id, lat, lon, data_hora_gmt)
+    },
+    interval = 1,
+    max_tries = 5,
+    until = ~ is.data.frame(.)
+  )
+
+  bdq_focos <- bind_rows(bdq_focos, tmp)
+  rm(tmp)
+}
+saveRDS(object = bdq_focos, file = path(dir_data, "bdq_focos.rds"))
 
 # Database disconnect
 cli_alert_info("Disconnecting database...")
