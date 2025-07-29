@@ -38,7 +38,8 @@ if (
   time <- "00:00"
 } else {
   date <- today()
-  time <- "12:00"
+  # time <- "12:00"
+  time <- "00:00"
 }
 
 cli_alert_info("Update refence: {date} {time}")
