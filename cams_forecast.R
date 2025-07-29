@@ -30,12 +30,12 @@ dir_data <- "/dados/home/rfsaldanha/camsdata/forecast_data/"
 leadtime_hour <- as.character(0:120)
 
 # Set update reference time
-if (am(now(tzone = "UTC"))) {
-  # If am, get data from today's 0 hour
+if (
+  now(tzone = "UTC") < as_datetime(today(tzone = "UTC") + duration("14 hours"))
+) {
   date <- today()
   time <- "00:00"
 } else {
-  # Else, if pm, get data from today's 12 hour
   date <- today()
   time <- "12:00"
 }
