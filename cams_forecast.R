@@ -23,8 +23,8 @@ library(duckdb)
 bbox <- c(33, -118, -56, -30)
 
 # Download directory
-# dir_data <- "/dados/home/rfsaldanha/camsdata/forecast_data/"
-dir_data <- "forecast_data/"
+dir_data <- "/dados/home/rfsaldanha/camsdata/forecast_data/"
+# dir_data <- "forecast_data/"
 
 # Forecast range, in hours
 leadtime_hour <- as.character(0:120)
