@@ -23,8 +23,8 @@ library(duckdb)
 bbox <- c(33, -118, -56, -30)
 
 # Download directory
-dir_data <- "/dados/home/rfsaldanha/camsdata/forecast_data/"
-# dir_data <- "forecast_data/"
+# dir_data <- "/dados/home/rfsaldanha/camsdata/forecast_data/"
+dir_data <- "forecast_data/"
 
 # Forecast range, in hours
 leadtime_hour <- as.character(0:120)
@@ -48,17 +48,32 @@ cli_alert_info("Update refence: {date} {time}")
 file_name_pm25 <- glue(
   "cams_forecast_pm25.nc"
 )
+file_name_sp <- glue(
+  "cams_forecast_sp.nc"
+)
 file_name_o3 <- glue(
   "cams_forecast_o3.nc"
+)
+file_name_o3_mc <- glue(
+  "cams_forecast_o3_mc.nc"
 )
 file_name_co <- glue(
   "cams_forecast_co.nc"
 )
+file_name_co_mc <- glue(
+  "cams_forecast_co_mc.nc"
+)
 file_name_no2 <- glue(
   "cams_forecast_no2.nc"
 )
+file_name_no2_mc <- glue(
+  "cams_forecast_no2_mc.nc"
+)
 file_name_so2 <- glue(
   "cams_forecast_so2.nc"
+)
+file_name_so2_mc <- glue(
+  "cams_forecast_so2_mc.nc"
 )
 file_name_temp <- glue(
   "cams_forecast_temp.nc"
@@ -92,11 +107,25 @@ request_pm25 <- list(
   target = file_name_pm25
 )
 
+## Surface pressure
+request_sp <- list(
+  dataset_short_name = "cams-global-atmospheric-composition-forecasts",
+  variable = "surface_pressure",
+  date = glue("{date}/{date}"),
+  time = time,
+  leadtime_hour = leadtime_hour,
+  type = "forecast",
+  data_format = "netcdf",
+  download_format = "unarchived",
+  area = bbox,
+  target = file_name_sp
+)
+
 ## O3
 request_o3 <- list(
   dataset_short_name = "cams-global-atmospheric-composition-forecasts",
   variable = "ozone",
-  pressure_level = "1000",
+  model_level = "137",
   date = glue("{date}/{date}"),
   time = time,
   leadtime_hour = leadtime_hour_level,
@@ -111,7 +140,7 @@ request_o3 <- list(
 request_co <- list(
   dataset_short_name = "cams-global-atmospheric-composition-forecasts",
   variable = "carbon_monoxide",
-  pressure_level = "1000",
+  model_level = "137",
   date = glue("{date}/{date}"),
   time = time,
   leadtime_hour = leadtime_hour_level,
@@ -126,7 +155,7 @@ request_co <- list(
 request_no2 <- list(
   dataset_short_name = "cams-global-atmospheric-composition-forecasts",
   variable = "nitrogen_dioxide",
-  pressure_level = "1000",
+  model_level = "137",
   date = glue("{date}/{date}"),
   time = time,
   leadtime_hour = leadtime_hour_level,
@@ -141,7 +170,7 @@ request_no2 <- list(
 request_so2 <- list(
   dataset_short_name = "cams-global-atmospheric-composition-forecasts",
   variable = "sulphur_dioxide",
-  pressure_level = "1000",
+  model_level = "137",
   date = glue("{date}/{date}"),
   time = time,
   leadtime_hour = leadtime_hour_level,
@@ -192,6 +221,20 @@ retry(
   expr = {
     wf_request(
       request = request_pm25,
+      transfer = TRUE,
+      path = dir_data
+    )
+  },
+  interval = 1,
+  max_tries = 100,
+  until = ~ is_file(as.character(.))
+)
+
+cli_h3("Surface pressure")
+retry(
+  expr = {
+    wf_request(
+      request = request_sp,
       transfer = TRUE,
       path = dir_data
     )
@@ -285,6 +328,48 @@ retry(
   until = ~ is_file(as.character(.))
 )
 
+cli_h2("Computing indicators to mass concentration (kg/kg to kg/m3)")
+# https://forum.ecmwf.int/t/convert-mass-mixing-ratio-mmr-to-mass-concentration-or-to-volume-mixing-ratio-vmr/1253
+
+sp <- rast(x = path(dir_data, file_name_sp))
+temp <- rast(x = path(dir_data, file_name_temp))
+o3 <- rast(x = path(dir_data, file_name_o3))
+co <- rast(x = path(dir_data, file_name_co))
+no2 <- rast(x = path(dir_data, file_name_no2))
+so2 <- rast(x = path(dir_data, file_name_so2))
+
+cli_h3("Ozone (kg/kg to kg/m3)")
+o3_mc <- o3 * (sp[[seq(1, 121, 3)]] / (260.2 * temp[[seq(1, 121, 3)]]))
+writeCDF(
+  x = o3_mc,
+  filename = path(dir_data, file_name_o3_mc),
+  overwrite = TRUE
+)
+
+cli_h3("CO (kg/kg to kg/m3)")
+co_mc <- co * (sp[[seq(1, 121, 3)]] / (296.84 * temp[[seq(1, 121, 3)]]))
+writeCDF(
+  x = co_mc,
+  filename = path(dir_data, file_name_co_mc),
+  overwrite = TRUE
+)
+
+cli_h3("NO2 (kg/kg to kg/m3)")
+no2_mc <- no2 * (sp[[seq(1, 121, 3)]] / (180.73 * temp[[seq(1, 121, 3)]]))
+writeCDF(
+  x = no2_mc,
+  filename = path(dir_data, file_name_no2_mc),
+  overwrite = TRUE
+)
+
+cli_h3("SO2 (kg/kg to kg/m3)")
+so2_mc <- so2 * (sp[[seq(1, 121, 3)]] / (129.78 * temp[[seq(1, 121, 3)]]))
+writeCDF(
+  x = no2_mc,
+  filename = path(dir_data, file_name_so2_mc),
+  overwrite = TRUE
+)
+
 cli_h2("Update forecasts database")
 
 # Database connection
@@ -326,7 +411,7 @@ agg_pm25 <- function(rst, x, fun) {
   res <- tibble(
     code_muni = mun$code_muni,
     date = seq_dates[x],
-    value = round(x = tmp * 1000000000, digits = 2), # kg/m3 to μg/m3
+    value = round(x = tmp * 1e9, digits = 2), # kg/m3 to μg/m3
   ) |>
     mutate(
       date = with_tz(date, "America/Sao_Paulo")
@@ -358,7 +443,7 @@ cli_h3("O3")
 
 # Read CAMS file
 cli_alert_info("Reading forecast file...")
-rst_o3 <- terra::rast(path(dir_data, file_name_o3))
+rst_o3 <- terra::rast(path(dir_data, file_name_o3_mc))
 cli_alert_info("Projecting raster file...")
 rst_o3 <- project(x = rst_o3, "EPSG:4326")
 
@@ -378,8 +463,7 @@ agg_o3 <- function(rst, x, fun) {
   res <- tibble(
     code_muni = mun$code_muni,
     date = seq_dates[x],
-    value = round(x = tmp * 28.9644 / 47.9982 * 1e9, digits = 2), # kg/kg to μg/m3
-    # https://forum.ecmwf.int/t/convert-mass-mixing-ratio-mmr-to-mass-concentration-or-to-volume-mixing-ratio-vmr/1253/2
+    value = round(x = tmp * 1e9, digits = 2), # kg/m3 to μg/m3
   ) |>
     mutate(
       date = with_tz(date, "America/Sao_Paulo")
@@ -412,7 +496,7 @@ cli_h3("CO")
 
 # Read CAMS file
 cli_alert_info("Reading forecast file...")
-rst_co <- terra::rast(path(dir_data, file_name_co))
+rst_co <- terra::rast(path(dir_data, file_name_co_mc))
 cli_alert_info("Projecting raster file...")
 rst_co <- project(x = rst_co, "EPSG:4326")
 
@@ -432,8 +516,7 @@ agg_co <- function(rst, x, fun) {
   res <- tibble(
     code_muni = mun$code_muni,
     date = seq_dates[x],
-    value = round(x = tmp * 28.9644 / 28.0101 * 1e9, digits = 2), # kg/kg to μg/m3
-    # https://forum.ecmwf.int/t/convert-mass-mixing-ratio-mmr-to-mass-concentration-or-to-volume-mixing-ratio-vmr/1253/2
+    value = round(x = tmp * 1e9, digits = 2), # kg/m3 to μg/m3
   ) |>
     mutate(
       date = with_tz(date, "America/Sao_Paulo")
@@ -466,7 +549,7 @@ cli_h3("NO2")
 
 # Read CAMS file
 cli_alert_info("Reading forecast file...")
-rst_no2 <- terra::rast(path(dir_data, file_name_co))
+rst_no2 <- terra::rast(path(dir_data, file_name_co_mc))
 cli_alert_info("Projecting raster file...")
 rst_no2 <- project(x = rst_no2, "EPSG:4326")
 
@@ -486,8 +569,7 @@ agg_no2 <- function(rst, x, fun) {
   res <- tibble(
     code_muni = mun$code_muni,
     date = seq_dates[x],
-    value = round(x = tmp * 28.9644 / 46.0055 * 1e9, digits = 2), # kg/kg to μg/m3
-    # https://forum.ecmwf.int/t/convert-mass-mixing-ratio-mmr-to-mass-concentration-or-to-volume-mixing-ratio-vmr/1253/2
+    value = round(x = tmp * 1e9, digits = 2), # kg/m3 to μg/m3
   ) |>
     mutate(
       date = with_tz(date, "America/Sao_Paulo")
@@ -520,7 +602,7 @@ cli_h3("SO2")
 
 # Read CAMS file
 cli_alert_info("Reading forecast file...")
-rst_so2 <- terra::rast(path(dir_data, file_name_co))
+rst_so2 <- terra::rast(path(dir_data, file_name_co_mc))
 cli_alert_info("Projecting raster file...")
 rst_so2 <- project(x = rst_so2, "EPSG:4326")
 
@@ -540,8 +622,7 @@ agg_so2 <- function(rst, x, fun) {
   res <- tibble(
     code_muni = mun$code_muni,
     date = seq_dates[x],
-    value = round(x = tmp * 28.9644 / 64.0638 * 1e9, digits = 2), # kg/kg to μg/m3
-    # https://forum.ecmwf.int/t/convert-mass-mixing-ratio-mmr-to-mass-concentration-or-to-volume-mixing-ratio-vmr/1253/2
+    value = round(x = tmp * 1e9, digits = 2), # kg/m3 to μg/m3
   ) |>
     mutate(
       date = with_tz(date, "America/Sao_Paulo")
