@@ -23,8 +23,8 @@ library(duckdb)
 bbox <- c(33, -118, -56, -30)
 
 # Download directory
-dir_data <- "/dados/home/rfsaldanha/camsdata/forecast_data/"
-# dir_data <- "forecast_data/"
+# dir_data <- "/dados/home/rfsaldanha/camsdata/forecast_data/"
+dir_data <- "forecast_data/"
 
 # Forecast range, in hours
 leadtime_hour <- as.character(0:120)
@@ -47,6 +47,9 @@ cli_alert_info("Update refence: {date} {time}")
 # File names
 file_name_pm25 <- glue(
   "cams_forecast_pm25.nc"
+)
+file_name_pm10 <- glue(
+  "cams_forecast_pm10.nc"
 )
 file_name_sp <- glue(
   "cams_forecast_sp.nc"
@@ -105,6 +108,20 @@ request_pm25 <- list(
   download_format = "unarchived",
   area = bbox,
   target = file_name_pm25
+)
+
+## PM10
+request_pm10 <- list(
+  dataset_short_name = "cams-global-atmospheric-composition-forecasts",
+  variable = "particulate_matter_10um",
+  date = glue("{date}/{date}"),
+  time = time,
+  leadtime_hour = leadtime_hour,
+  type = "forecast",
+  data_format = "netcdf",
+  download_format = "unarchived",
+  area = bbox,
+  target = file_name_pm10
 )
 
 ## Surface pressure
@@ -230,6 +247,20 @@ retry(
   until = ~ is_file(as.character(.))
 )
 
+cli_h3("PM 10")
+retry(
+  expr = {
+    wf_request(
+      request = request_pm10,
+      transfer = TRUE,
+      path = dir_data
+    )
+  },
+  interval = 1,
+  max_tries = 100,
+  until = ~ is_file(as.character(.))
+)
+
 cli_h3("Surface pressure")
 retry(
   expr = {
@@ -328,8 +359,9 @@ retry(
   until = ~ is_file(as.character(.))
 )
 
-cli_h2("Computing indicators to mass concentration (kg/kg to kg/m3)")
+cli_h2("Computing gas indicators to differente units")
 # https://forum.ecmwf.int/t/convert-mass-mixing-ratio-mmr-to-mass-concentration-or-to-volume-mixing-ratio-vmr/1253
+# https://teesing.com/en/tools/ppm-mg3-converter
 
 sp <- rast(x = path(dir_data, file_name_sp))
 temp <- rast(x = path(dir_data, file_name_temp))
@@ -346,8 +378,10 @@ writeCDF(
   overwrite = TRUE
 )
 
-cli_h3("CO (kg/kg to kg/m3)")
-co_mc <- co * (sp[[seq(1, 121, 3)]] / (296.84 * temp[[seq(1, 121, 3)]]))
+cli_h3("CO (kg/kg to PPM)")
+co_mc <- co * (sp[[seq(1, 121, 3)]] / (296.84 * temp[[seq(1, 121, 3)]])) # kg/kg to kg/m3
+co_mc <- co_mc * 1e6 # kg/m3 to mg/m3
+co_mc <- 24.45 * co_mc / 28.01 # mg/m3 to PPM
 writeCDF(
   x = co_mc,
   filename = path(dir_data, file_name_co_mc),
@@ -380,6 +414,7 @@ if (file_exists(path(dir_data, "cams_forecast.duckdb"))) {
 cli_alert_info("Connecting to database...")
 con <- dbConnect(duckdb(), path(dir_data, "cams_forecast.duckdb"))
 tb_name_pm25 <- "pm25_mun_forecast"
+tb_name_pm10 <- "pm10_mun_forecast"
 tb_name_o3 <- "o3_mun_forecast"
 tb_name_co <- "co_mun_forecast"
 tb_name_no2 <- "no2_mun_forecast"
@@ -438,6 +473,58 @@ cli_alert_success("Done!")
 cli_alert_info("Checking data...")
 tbl(con, tb_name_pm25) |> tally()
 tbl(con, tb_name_pm25) |> head()
+
+cli_h3("PM 10")
+
+# Read CAMS file
+cli_alert_info("Reading forecast file...")
+rst_pm10 <- terra::rast(path(dir_data, file_name_pm10))
+cli_alert_info("Projecting raster file...")
+rst_pm10 <- project(x = rst_pm10, "EPSG:4326")
+
+# Zonal statistic function
+agg_pm10 <- function(rst, x, fun) {
+  # Zonal statistic computation
+  tmp <- exact_extract(x = rst[[x]], y = mun, fun = fun, progress = FALSE)
+
+  # Date and time
+  seq_dates <- seq(
+    from = as_datetime(paste(date, time), format = "%Y-%m-%d %H:%M"),
+    to = as_datetime(date + duration(120, "hours")),
+    by = "1 hours"
+  )
+
+  # Table output with unit conversion and rounding
+  res <- tibble(
+    code_muni = mun$code_muni,
+    date = seq_dates[x],
+    value = round(x = tmp * 1e9, digits = 2), # kg/m3 to μg/m3
+  ) |>
+    mutate(
+      date = with_tz(date, "America/Sao_Paulo")
+    )
+
+  # Write to database
+  dbWriteTable(conn = con, name = tb_name_pm10, value = res, append = TRUE)
+
+  return(TRUE)
+}
+
+# Compute zonal mean
+cli_alert_info("Computing zonal mean...")
+res_mean_pm10 <- map(
+  .x = 1:121,
+  .f = agg_pm10,
+  rst = rst_pm10,
+  fun = "mean",
+  .progress = TRUE
+)
+cli_alert_success("Done!")
+
+# Check data
+cli_alert_info("Checking data...")
+tbl(con, tb_name_pm10) |> tally()
+tbl(con, tb_name_pm10) |> head()
 
 cli_h3("O3")
 
@@ -760,6 +847,7 @@ cli_alert_info("Disconnecting database...")
 dbDisconnect(conn = con)
 
 # Fetch INPE BD Queimadas data
+cli_alert_info("Fetch BDQueimadas / INPE data...")
 bdq_base_url <- "https://dataserver-coids.inpe.br/queimadas/queimadas/focos/csv/diario/America_Sul/"
 bdq_file_names <- paste0(
   "focos_diario_",
