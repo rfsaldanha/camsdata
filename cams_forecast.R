@@ -399,7 +399,7 @@ writeCDF(
 cli_h3("SO2 (kg/kg to kg/m3)")
 so2_mc <- so2 * (sp[[seq(1, 121, 3)]] / (129.78 * temp[[seq(1, 121, 3)]]))
 writeCDF(
-  x = no2_mc,
+  x = so2_mc,
   filename = path(dir_data, file_name_so2_mc),
   overwrite = TRUE
 )
@@ -603,7 +603,7 @@ agg_co <- function(rst, x, fun) {
   res <- tibble(
     code_muni = mun$code_muni,
     date = seq_dates[x],
-    value = round(x = tmp * 1e9, digits = 2), # kg/m3 to μg/m3
+    value = round(x = tmp, digits = 2), # PPM
   ) |>
     mutate(
       date = with_tz(date, "America/Sao_Paulo")
@@ -636,7 +636,7 @@ cli_h3("NO2")
 
 # Read CAMS file
 cli_alert_info("Reading forecast file...")
-rst_no2 <- terra::rast(path(dir_data, file_name_co_mc))
+rst_no2 <- terra::rast(path(dir_data, file_name_no2_mc))
 cli_alert_info("Projecting raster file...")
 rst_no2 <- project(x = rst_no2, "EPSG:4326")
 
@@ -689,7 +689,7 @@ cli_h3("SO2")
 
 # Read CAMS file
 cli_alert_info("Reading forecast file...")
-rst_so2 <- terra::rast(path(dir_data, file_name_co_mc))
+rst_so2 <- terra::rast(path(dir_data, file_name_so2_mc))
 cli_alert_info("Projecting raster file...")
 rst_so2 <- project(x = rst_so2, "EPSG:4326")
 
