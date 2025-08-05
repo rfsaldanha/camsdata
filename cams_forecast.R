@@ -32,17 +32,16 @@ leadtime_hour_level <- as.character(seq(0, 120, 3))
 
 # Set update reference time
 if (
-  now(tzone = "UTC") < as_datetime(today(tzone = "UTC") + duration("18 hours"))
+  now(tzone = "UTC") < as_datetime(today(tzone = "UTC") + duration("10 hours"))
 ) {
-  date <- today()
-  time <- "00:00"
+  date <- today() - 1
+  time <- "12:00"
 } else {
   date <- today()
-  # time <- "12:00"
   time <- "00:00"
 }
 
-cli_alert_info("Update refence: {date} {time}")
+cli_alert_info("Update reference: {date} {time}")
 
 # File names
 file_name_pm25 <- glue(
