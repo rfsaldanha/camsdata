@@ -16,6 +16,7 @@ iqar_pm25 <- terra::app(
   pol = "pm2.5",
   cores = 12
 )
+tictoc::toc()
 
 iqar_pm10 <- terra::app(
   x = rst_pm10 * 1e9,
