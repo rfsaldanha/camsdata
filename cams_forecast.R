@@ -18,13 +18,15 @@ library(purrr)
 library(exactextractr)
 library(DBI)
 library(duckdb)
+cli_alert_success("Done!")
 
+cli::cli_alert_info("Setting environment...")
 # Bounding box
-bbox <- c(33, -118, -56, -30)
+bbox <- c(13.49, -83.15, -56.69, -32.88)
 
 # Download directory
-dir_data <- "/dados/home/rfsaldanha/camsdata/forecast_data/"
-# dir_data <- "forecast_data/"
+# dir_data <- "/dados/home/rfsaldanha/camsdata/forecast_data/"
+dir_data <- "forecast_data/"
 
 # Forecast range, in hours
 leadtime_hour <- as.character(0:120)
@@ -40,6 +42,7 @@ if (
   date <- today()
   time <- "00:00"
 }
+
 
 cli_alert_info("Update reference: {date} {time}")
 
@@ -82,6 +85,9 @@ file_name_temp <- glue(
 )
 file_name_uv <- glue(
   "cams_forecast_uv.nc"
+)
+file_name_iqar <- glue(
+  "iqar.nc"
 )
 
 # Remove old forecast files
@@ -229,6 +235,8 @@ request_uv <- list(
 cli::cli_alert_info("Retrieving access token...")
 wf_set_key(key = Sys.getenv("era5_API_Key"))
 
+cli_alert_success("Done!")
+
 cli_h2("Request forecasts from CAMS")
 
 # Download files with retry
@@ -245,6 +253,7 @@ retry(
   max_tries = 100,
   until = ~ is_file(as.character(.))
 )
+cli_alert_success("Done!")
 
 cli_h3("PM 10")
 retry(
@@ -259,6 +268,7 @@ retry(
   max_tries = 100,
   until = ~ is_file(as.character(.))
 )
+cli_alert_success("Done!")
 
 cli_h3("Surface pressure")
 retry(
@@ -273,6 +283,7 @@ retry(
   max_tries = 100,
   until = ~ is_file(as.character(.))
 )
+cli_alert_success("Done!")
 
 cli_h3("O3")
 retry(
@@ -287,6 +298,7 @@ retry(
   max_tries = 100,
   until = ~ is_file(as.character(.))
 )
+cli_alert_success("Done!")
 
 cli_h3("CO")
 retry(
@@ -301,6 +313,7 @@ retry(
   max_tries = 100,
   until = ~ is_file(as.character(.))
 )
+cli_alert_success("Done!")
 
 cli_h3("NO2")
 retry(
@@ -315,6 +328,7 @@ retry(
   max_tries = 100,
   until = ~ is_file(as.character(.))
 )
+cli_alert_success("Done!")
 
 cli_h3("SO2")
 retry(
@@ -329,6 +343,7 @@ retry(
   max_tries = 100,
   until = ~ is_file(as.character(.))
 )
+cli_alert_success("Done!")
 
 cli_h3("Temperature")
 retry(
@@ -343,6 +358,7 @@ retry(
   max_tries = 100,
   until = ~ is_file(as.character(.))
 )
+cli_alert_success("Done!")
 
 cli_h3("UV")
 retry(
@@ -357,8 +373,9 @@ retry(
   max_tries = 100,
   until = ~ is_file(as.character(.))
 )
+cli_alert_success("Done!")
 
-cli_h2("Computing gas indicators to differente units")
+cli_h2("Computing gas indicators to different units")
 # https://forum.ecmwf.int/t/convert-mass-mixing-ratio-mmr-to-mass-concentration-or-to-volume-mixing-ratio-vmr/1253
 # https://teesing.com/en/tools/ppm-mg3-converter
 
@@ -376,6 +393,7 @@ writeCDF(
   filename = path(dir_data, file_name_o3_mc),
   overwrite = TRUE
 )
+cli_alert_success("Done!")
 
 cli_h3("CO (kg/kg to PPM)")
 co_mc <- co * (sp[[seq(1, 121, 3)]] / (296.84 * temp[[seq(1, 121, 3)]])) # kg/kg to kg/m3
@@ -386,6 +404,7 @@ writeCDF(
   filename = path(dir_data, file_name_co_mc),
   overwrite = TRUE
 )
+cli_alert_success("Done!")
 
 cli_h3("NO2 (kg/kg to kg/m3)")
 no2_mc <- no2 * (sp[[seq(1, 121, 3)]] / (180.73 * temp[[seq(1, 121, 3)]]))
@@ -394,6 +413,7 @@ writeCDF(
   filename = path(dir_data, file_name_no2_mc),
   overwrite = TRUE
 )
+cli_alert_success("Done!")
 
 cli_h3("SO2 (kg/kg to kg/m3)")
 so2_mc <- so2 * (sp[[seq(1, 121, 3)]] / (129.78 * temp[[seq(1, 121, 3)]]))
@@ -402,6 +422,85 @@ writeCDF(
   filename = path(dir_data, file_name_so2_mc),
   overwrite = TRUE
 )
+cli_alert_success("Done!")
+
+cli_h2("Computing IQAr")
+rst_pm25 <- terra::rast(path(dir_data, file_name_pm25))
+rst_pm10 <- terra::rast(path(dir_data, file_name_pm10))
+rst_o3 <- terra::rast(path(dir_data, file_name_o3_mc))
+rst_co <- terra::rast(path(dir_data, file_name_co_mc))
+rst_no2 <- terra::rast(path(dir_data, file_name_no2_mc))
+rst_so2 <- terra::rast(path(dir_data, file_name_so2_mc))
+
+f_iqar <- function(x, pol) {
+  sapply(X = x, FUN = riqar::iqar_pol, pol = pol)
+}
+cli_alert_info("Pollutants specific IQAr")
+iqar_pm25 <- app(
+  x = rst_pm25 * 1e9,
+  fun = f_iqar,
+  pol = "pm2.5",
+  cores = 4
+)
+
+iqar_pm10 <- app(
+  x = rst_pm10 * 1e9,
+  fun = f_iqar,
+  pol = "pm10",
+  cores = 4
+)
+
+iqar_o3 <- app(
+  x = rst_o3 * 1e9,
+  fun = f_iqar,
+  pol = "o3",
+  cores = 4
+)
+
+iqar_co <- app(
+  x = rst_co,
+  fun = f_iqar,
+  pol = "co",
+  cores = 4
+)
+
+iqar_no2 <- app(
+  x = rst_no2 * 1e9,
+  fun = f_iqar,
+  pol = "no2",
+  cores = 4
+)
+
+iqar_so2 <- app(
+  x = rst_so2 * 1e9,
+  fun = f_iqar,
+  pol = "so2",
+  cores = 4
+)
+cli_alert_success("Done!")
+
+cli_alert_info("Computing IQAr")
+iqar <- NULL
+for (i in 1:41) {
+  tmp <- terra::app(
+    x = c(
+      iqar_pm25[[seq(1, 121, 3)]][[i]],
+      iqar_pm10[[seq(1, 121, 3)]][[i]],
+      iqar_o3[[i]],
+      iqar_co[[i]],
+      iqar_no2[[i]],
+      iqar_so2[[i]]
+    ),
+    fun = max
+  )
+
+  iqar <- c(iqar, tmp)
+  rm(tmp)
+}
+iqar <- terra::rast(iqar)
+
+writeCDF(x = iqar, filename = path(dir_data, file_name_iqar), overwrite = TRUE)
+cli_alert_success("Done!")
 
 cli_h2("Update forecasts database")
 
@@ -412,6 +511,7 @@ if (file_exists(path(dir_data, "cams_forecast.duckdb"))) {
 }
 cli_alert_info("Connecting to database...")
 con <- dbConnect(duckdb(), path(dir_data, "cams_forecast.duckdb"))
+tb_name_iqar <- "iqar_forecast"
 tb_name_pm25 <- "pm25_mun_forecast"
 tb_name_pm10 <- "pm10_mun_forecast"
 tb_name_o3 <- "o3_mun_forecast"
@@ -420,6 +520,58 @@ tb_name_no2 <- "no2_mun_forecast"
 tb_name_so2 <- "so2_mun_forecast"
 tb_name_temp <- "temp_mun_forecast"
 tb_name_uv <- "uv_mun_forecast"
+
+cli_h3("IQAr")
+
+# Read CAMS file
+cli_alert_info("Reading forecast file...")
+rst_iqar <- terra::rast(path(dir_data, file_name_iqar))
+cli_alert_info("Projecting raster file...")
+rst_iqar <- project(x = rst_iqar, "EPSG:4326")
+
+# Zonal statistic function
+agg_iqar <- function(rst, x, fun) {
+  # Zonal statistic computation
+  tmp <- exact_extract(x = rst[[x]], y = mun, fun = fun, progress = FALSE)
+
+  # Date and time
+  seq_dates <- seq(
+    from = as_datetime(paste(date, time), format = "%Y-%m-%d %H:%M"),
+    to = as_datetime(date + duration(120, "hours")),
+    by = "3 hours"
+  )
+
+  # Table output with unit conversion and rounding
+  res <- tibble(
+    code_muni = mun$code_muni,
+    date = seq_dates[x],
+    value = round(x = tmp, digits = 2),
+  ) |>
+    mutate(
+      date = with_tz(date, "America/Sao_Paulo")
+    )
+
+  # Write to database
+  dbWriteTable(conn = con, name = tb_name_iqar, value = res, append = TRUE)
+
+  return(TRUE)
+}
+
+# Compute zonal mean
+cli_alert_info("Computing zonal mean...")
+res_mean_iqar <- map(
+  .x = 1:41,
+  .f = agg_iqar,
+  rst = rst_iqar,
+  fun = "mean",
+  .progress = TRUE
+)
+cli_alert_success("Done!")
+
+# Check data
+cli_alert_info("Checking data...")
+tbl(con, tb_name_iqar) |> tally()
+tbl(con, tb_name_iqar) |> head()
 
 cli_h3("PM 2.5")
 
@@ -873,5 +1025,6 @@ for (i in bdq_urls) {
   rm(tmp)
 }
 saveRDS(object = bdq_focos, file = path(dir_data, "bdq_focos.rds"))
+cli_alert_success("Done!")
 
 cli_h1("END")
