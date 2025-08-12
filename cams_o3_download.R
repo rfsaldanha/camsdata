@@ -14,6 +14,8 @@ dir_data <- "/media/raphaelsaldanha/lacie/cams_o3"
 dates <- as.character(seq(ymd("2003-01-01"), ymd("2024-12-31"), by = "1 day"))
 dates <- rev(dates)
 times <- c(
+  "00:00",
+  "03:00",
   "06:00",
   "09:00",
   "12:00",
@@ -36,7 +38,8 @@ for (d in dates) {
 
   request <- list(
     dataset_short_name = "cams-global-reanalysis-eac4",
-    variable = "total_column_ozone",
+    variable = "ozone",
+    model_level = "60",
     date = glue("{d}/{d}"),
     time = times,
     data_format = "netcdf",

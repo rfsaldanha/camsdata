@@ -38,7 +38,8 @@ for (d in dates) {
 
   request <- list(
     dataset_short_name = "cams-global-reanalysis-eac4",
-    variable = "total_column_carbon_monoxide",
+    variable = "carbon_monoxide",
+    model_level = "60",
     date = glue("{d}/{d}"),
     time = times,
     data_format = "netcdf",
