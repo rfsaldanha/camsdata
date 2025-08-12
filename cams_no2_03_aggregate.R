@@ -9,7 +9,7 @@ library(tools)
 library(purrr)
 
 # Folders
-hourly_data_folder <- "/media/raphaelsaldanha/lacie/cams_no2/"
+hourly_data_folder <- "/media/raphaelsaldanha/lacie/cams_no2_mc/"
 daily_data_folder <- "/media/raphaelsaldanha/lacie/cams_no2_daily_agg/"
 
 # List files
