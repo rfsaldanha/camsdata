@@ -8,7 +8,7 @@ library(glue)
 library(lubridate)
 library(cli)
 library(tools)
-library(purrr)
+library(furrr)
 
 # Folders
 original_unit_folder <- "/media/raphaelsaldanha/lacie/cams_so2/"
@@ -82,4 +82,10 @@ gas_fun <- function(df_list, dest) {
 }
 
 # Execute
-res <- map(.x = df_list, .f = gas_fun, dest = new_unit_folder, .progress = TRUE)
+plan(multisession, workers = 4)
+res <- future_map(
+  .x = df_list,
+  .f = gas_fun,
+  dest = new_unit_folder,
+  .progress = TRUE
+)
