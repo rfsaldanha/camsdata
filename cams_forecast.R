@@ -1,8 +1,8 @@
 # Packages
 cli::cli_h1("CAMS forecast data download routine")
-cli::cli_alert_info("Job start: {now()}")
+cli::cli_alert_info("Job start: {lubridate::now()}")
 cli::cli_h2("Environment setup")
-cli::cli_alert_info("Loading packages...")
+cli::cli_alert("Loading packages...")
 library(ecmwfr)
 library(lubridate)
 library(glue)
@@ -21,7 +21,7 @@ library(DBI)
 library(duckdb)
 cli_alert_success("Done!")
 
-cli_alert_info("Setting environment...")
+cli_alert("Setting environment...")
 # Bounding box
 bbox <- c(13.49, -83.15, -56.69, -32.20)
 
@@ -45,7 +45,7 @@ if (
 }
 
 
-cli_alert("Update reference: {date} {time}")
+cli_alert_info("Update reference: {date} {time}")
 
 # File names
 file_name_pm25 <- glue(
@@ -95,7 +95,7 @@ file_name_iqar <- glue(
 file_delete(list.files(path(dir_data), full.names = TRUE, pattern = "*.nc"))
 
 # Municipalities
-cli_alert_info("Reading geometries file...")
+cli_alert("Reading geometries file...")
 # mun <- geobr::read_municipality(year = 2010, simplified = TRUE)
 # mun <- st_transform(x = mun, crs = 4326)
 # saveRDS(mun, "mun_epsg4326.rds")
@@ -233,7 +233,7 @@ request_uv <- list(
 )
 
 # Token
-cli_alert_info("Retrieving access token...")
+cli_alert("Retrieving access token...")
 wf_set_key(key = Sys.getenv("era5_API_Key"))
 
 cli_alert_success("Done!")
@@ -241,7 +241,7 @@ cli_alert_success("Done!")
 cli_h2("Request forecasts from CAMS")
 
 # Download files with retry
-cli_alert_info("PM 2.5")
+cli_alert("PM 2.5")
 retry(
   expr = {
     wf_request(
@@ -256,7 +256,7 @@ retry(
 )
 cli_alert_success("Done!")
 
-cli_alert_info("PM 10")
+cli_alert("PM 10")
 retry(
   expr = {
     wf_request(
@@ -271,7 +271,7 @@ retry(
 )
 cli_alert_success("Done!")
 
-cli_alert_info("Surface pressure")
+cli_alert("Surface pressure")
 retry(
   expr = {
     wf_request(
@@ -286,7 +286,7 @@ retry(
 )
 cli_alert_success("Done!")
 
-cli_alert_info("O3")
+cli_alert("O3")
 retry(
   expr = {
     wf_request(
@@ -301,7 +301,7 @@ retry(
 )
 cli_alert_success("Done!")
 
-cli_alert_info("CO")
+cli_alert("CO")
 retry(
   expr = {
     wf_request(
@@ -316,7 +316,7 @@ retry(
 )
 cli_alert_success("Done!")
 
-cli_alert_info("NO2")
+cli_alert("NO2")
 retry(
   expr = {
     wf_request(
@@ -331,7 +331,7 @@ retry(
 )
 cli_alert_success("Done!")
 
-cli_alert_info("SO2")
+cli_alert("SO2")
 retry(
   expr = {
     wf_request(
@@ -346,7 +346,7 @@ retry(
 )
 cli_alert_success("Done!")
 
-cli_alert_info("Temperature")
+cli_alert("Temperature")
 retry(
   expr = {
     wf_request(
@@ -387,7 +387,7 @@ co <- rast(x = path(dir_data, file_name_co))
 no2 <- rast(x = path(dir_data, file_name_no2))
 so2 <- rast(x = path(dir_data, file_name_so2))
 
-cli_alert_info("Ozone (kg/kg to kg/m3)")
+cli_alert("Ozone (kg/kg to kg/m3)")
 o3_mc <- o3 * (sp[[seq(1, 121, 3)]] / (260.2 * temp[[seq(1, 121, 3)]]))
 writeCDF(
   x = o3_mc,
@@ -396,7 +396,7 @@ writeCDF(
 )
 cli_alert_success("Done!")
 
-cli_alert_info("CO (kg/kg to PPM)")
+cli_alert("CO (kg/kg to PPM)")
 co_mc <- co * (sp[[seq(1, 121, 3)]] / (296.84 * temp[[seq(1, 121, 3)]])) # kg/kg to kg/m3
 co_mc <- co_mc * 1e6 # kg/m3 to mg/m3
 co_mc <- 24.45 * co_mc / 28.01 # mg/m3 to PPM
@@ -407,7 +407,7 @@ writeCDF(
 )
 cli_alert_success("Done!")
 
-cli_alert_info("NO2 (kg/kg to kg/m3)")
+cli_alert("NO2 (kg/kg to kg/m3)")
 no2_mc <- no2 * (sp[[seq(1, 121, 3)]] / (180.73 * temp[[seq(1, 121, 3)]]))
 writeCDF(
   x = no2_mc,
@@ -416,7 +416,7 @@ writeCDF(
 )
 cli_alert_success("Done!")
 
-cli_alert_info("SO2 (kg/kg to kg/m3)")
+cli_alert("SO2 (kg/kg to kg/m3)")
 so2_mc <- so2 * (sp[[seq(1, 121, 3)]] / (129.78 * temp[[seq(1, 121, 3)]]))
 writeCDF(
   x = so2_mc,
@@ -437,7 +437,7 @@ f_iqar <- function(x, pol) {
   sapply(X = x, FUN = riqar::iqar_pol, pol = pol)
 }
 cli_h3("Computing pollutants specific IQAr")
-cli_alert_info("PM 2.5")
+cli_alert("PM 2.5")
 iqar_pm25 <- app(
   x = rst_pm25 * 1e9,
   fun = f_iqar,
@@ -446,7 +446,7 @@ iqar_pm25 <- app(
 )
 cli_alert_success("Done!")
 
-cli_alert_info("PM 10")
+cli_alert("PM 10")
 iqar_pm10 <- app(
   x = rst_pm10 * 1e9,
   fun = f_iqar,
@@ -455,7 +455,7 @@ iqar_pm10 <- app(
 )
 cli_alert_success("Done!")
 
-cli_alert_info("O3")
+cli_alert("O3")
 iqar_o3 <- app(
   x = rst_o3 * 1e9,
   fun = f_iqar,
@@ -464,7 +464,7 @@ iqar_o3 <- app(
 )
 cli_alert_success("Done!")
 
-cli_alert_info("CO")
+cli_alert("CO")
 iqar_co <- app(
   x = rst_co,
   fun = f_iqar,
@@ -473,7 +473,7 @@ iqar_co <- app(
 )
 cli_alert_success("Done!")
 
-cli_alert_info("NO2")
+cli_alert("NO2")
 iqar_no2 <- app(
   x = rst_no2 * 1e9,
   fun = f_iqar,
@@ -482,7 +482,7 @@ iqar_no2 <- app(
 )
 cli_alert_success("Done!")
 
-cli_alert_info("SO2")
+cli_alert("SO2")
 iqar_so2 <- app(
   x = rst_so2 * 1e9,
   fun = f_iqar,
@@ -517,11 +517,11 @@ cli_alert_success("Done!")
 cli_h2("Updating forecasts database...")
 
 # Database connection
-cli_alert_info("Deleting old database...")
+cli_alert("Deleting old database...")
 if (file_exists(path(dir_data, "cams_forecast.duckdb"))) {
   file_delete(path(dir_data, "cams_forecast.duckdb"))
 }
-cli_alert_info("Connecting to database...")
+cli_alert("Connecting to database...")
 con <- dbConnect(duckdb(), path(dir_data, "cams_forecast.duckdb"))
 # Table names
 tb_name_iqar <- "iqar_forecast"
@@ -537,9 +537,9 @@ tb_name_uv <- "uv_mun_forecast"
 cli_h3("IQAr")
 
 # Read CAMS file
-cli_alert_info("Reading forecast file...")
+cli_alert("Reading forecast file...")
 rst_iqar <- terra::rast(path(dir_data, file_name_iqar))
-cli_alert_info("Projecting raster file...")
+cli_alert("Projecting raster file...")
 rst_iqar <- project(x = rst_iqar, "EPSG:4326")
 
 # Zonal statistic function
@@ -571,7 +571,7 @@ agg_iqar <- function(rst, x, fun) {
 }
 
 # Compute zonal mean
-cli_alert_info("Computing zonal mean...")
+cli_alert("Computing zonal mean...")
 res_mean_iqar <- map(
   .x = 1:41,
   .f = agg_iqar,
@@ -582,16 +582,16 @@ res_mean_iqar <- map(
 cli_alert_success("Done!")
 
 # Check data
-cli_alert_info("Checking data...")
+cli_alert("Checking data...")
 tbl(con, tb_name_iqar) |> tally()
 tbl(con, tb_name_iqar) |> head()
 
 cli_h3("PM 2.5")
 
 # Read CAMS file
-cli_alert_info("Reading forecast file...")
+cli_alert("Reading forecast file...")
 rst_pm25 <- terra::rast(path(dir_data, file_name_pm25))
-cli_alert_info("Projecting raster file...")
+cli_alert("Projecting raster file...")
 rst_pm25 <- project(x = rst_pm25, "EPSG:4326")
 
 # Zonal statistic function
@@ -623,7 +623,7 @@ agg_pm25 <- function(rst, x, fun) {
 }
 
 # Compute zonal mean
-cli_alert_info("Computing zonal mean...")
+cli_alert("Computing zonal mean...")
 res_mean_pm25 <- map(
   .x = 1:121,
   .f = agg_pm25,
@@ -634,16 +634,16 @@ res_mean_pm25 <- map(
 cli_alert_success("Done!")
 
 # Check data
-cli_alert_info("Checking data...")
+cli_alert("Checking data...")
 tbl(con, tb_name_pm25) |> tally()
 tbl(con, tb_name_pm25) |> head()
 
 cli_h3("PM 10")
 
 # Read CAMS file
-cli_alert_info("Reading forecast file...")
+cli_alert("Reading forecast file...")
 rst_pm10 <- terra::rast(path(dir_data, file_name_pm10))
-cli_alert_info("Projecting raster file...")
+cli_alert("Projecting raster file...")
 rst_pm10 <- project(x = rst_pm10, "EPSG:4326")
 
 # Zonal statistic function
@@ -675,7 +675,7 @@ agg_pm10 <- function(rst, x, fun) {
 }
 
 # Compute zonal mean
-cli_alert_info("Computing zonal mean...")
+cli_alert("Computing zonal mean...")
 res_mean_pm10 <- map(
   .x = 1:121,
   .f = agg_pm10,
@@ -686,16 +686,16 @@ res_mean_pm10 <- map(
 cli_alert_success("Done!")
 
 # Check data
-cli_alert_info("Checking data...")
+cli_alert("Checking data...")
 tbl(con, tb_name_pm10) |> tally()
 tbl(con, tb_name_pm10) |> head()
 
 cli_h3("O3")
 
 # Read CAMS file
-cli_alert_info("Reading forecast file...")
+cli_alert("Reading forecast file...")
 rst_o3 <- terra::rast(path(dir_data, file_name_o3_mc))
-cli_alert_info("Projecting raster file...")
+cli_alert("Projecting raster file...")
 rst_o3 <- project(x = rst_o3, "EPSG:4326")
 
 # Zonal statistic function
@@ -727,7 +727,7 @@ agg_o3 <- function(rst, x, fun) {
 }
 
 # Compute zonal mean
-cli_alert_info("Computing zonal mean...")
+cli_alert("Computing zonal mean...")
 res_mean_o3 <- map(
   .x = 1:41,
   .f = agg_o3,
@@ -738,7 +738,7 @@ res_mean_o3 <- map(
 cli_alert_success("Done!")
 
 # Check data
-cli_alert_info("Checking data...")
+cli_alert("Checking data...")
 tbl(con, tb_name_o3) |> tally()
 tbl(con, tb_name_o3) |> head()
 
@@ -746,9 +746,9 @@ tbl(con, tb_name_o3) |> head()
 cli_h3("CO")
 
 # Read CAMS file
-cli_alert_info("Reading forecast file...")
+cli_alert("Reading forecast file...")
 rst_co <- terra::rast(path(dir_data, file_name_co_mc))
-cli_alert_info("Projecting raster file...")
+cli_alert("Projecting raster file...")
 rst_co <- project(x = rst_co, "EPSG:4326")
 
 # Zonal statistic function
@@ -780,7 +780,7 @@ agg_co <- function(rst, x, fun) {
 }
 
 # Compute zonal mean
-cli_alert_info("Computing zonal mean...")
+cli_alert("Computing zonal mean...")
 res_mean_co <- map(
   .x = 1:41,
   .f = agg_co,
@@ -791,7 +791,7 @@ res_mean_co <- map(
 cli_alert_success("Done!")
 
 # Check data
-cli_alert_info("Checking data...")
+cli_alert("Checking data...")
 tbl(con, tb_name_co) |> tally()
 tbl(con, tb_name_co) |> head()
 
@@ -799,9 +799,9 @@ tbl(con, tb_name_co) |> head()
 cli_h3("NO2")
 
 # Read CAMS file
-cli_alert_info("Reading forecast file...")
+cli_alert("Reading forecast file...")
 rst_no2 <- terra::rast(path(dir_data, file_name_no2_mc))
-cli_alert_info("Projecting raster file...")
+cli_alert("Projecting raster file...")
 rst_no2 <- project(x = rst_no2, "EPSG:4326")
 
 # Zonal statistic function
@@ -833,7 +833,7 @@ agg_no2 <- function(rst, x, fun) {
 }
 
 # Compute zonal mean
-cli_alert_info("Computing zonal mean...")
+cli_alert("Computing zonal mean...")
 res_mean_no2 <- map(
   .x = 1:41,
   .f = agg_no2,
@@ -844,7 +844,7 @@ res_mean_no2 <- map(
 cli_alert_success("Done!")
 
 # Check data
-cli_alert_info("Checking data...")
+cli_alert("Checking data...")
 tbl(con, tb_name_no2) |> tally()
 tbl(con, tb_name_no2) |> head()
 
@@ -852,9 +852,9 @@ tbl(con, tb_name_no2) |> head()
 cli_h3("SO2")
 
 # Read CAMS file
-cli_alert_info("Reading forecast file...")
+cli_alert("Reading forecast file...")
 rst_so2 <- terra::rast(path(dir_data, file_name_so2_mc))
-cli_alert_info("Projecting raster file...")
+cli_alert("Projecting raster file...")
 rst_so2 <- project(x = rst_so2, "EPSG:4326")
 
 # Zonal statistic function
@@ -886,7 +886,7 @@ agg_so2 <- function(rst, x, fun) {
 }
 
 # Compute zonal mean
-cli_alert_info("Computing zonal mean...")
+cli_alert("Computing zonal mean...")
 res_mean_so2 <- map(
   .x = 1:41,
   .f = agg_so2,
@@ -897,7 +897,7 @@ res_mean_so2 <- map(
 cli_alert_success("Done!")
 
 # Check data
-cli_alert_info("Checking data...")
+cli_alert("Checking data...")
 tbl(con, tb_name_so2) |> tally()
 tbl(con, tb_name_so2) |> head()
 
@@ -905,9 +905,9 @@ tbl(con, tb_name_so2) |> head()
 cli_h3("Temperature")
 
 # Read CAMS file
-cli_alert_info("Reading forecast file...")
+cli_alert("Reading forecast file...")
 rst_temp <- terra::rast(path(dir_data, file_name_temp))
-cli_alert_info("Projecting raster file...")
+cli_alert("Projecting raster file...")
 rst_temp <- project(x = rst_temp, "EPSG:4326")
 
 # Zonal statistic function
@@ -939,7 +939,7 @@ agg_temp <- function(rst, x, fun) {
 }
 
 # Compute zonal mean
-cli_alert_info("Computing zonal mean...")
+cli_alert("Computing zonal mean...")
 res_mean_temp <- map(
   .x = 1:121,
   .f = agg_temp,
@@ -950,16 +950,16 @@ res_mean_temp <- map(
 cli_alert_success("Done!")
 
 # Check data
-cli_alert_info("Checking data...")
+cli_alert("Checking data...")
 tbl(con, tb_name_temp) |> tally()
 tbl(con, tb_name_temp) |> head()
 
 cli_h3("UV")
 
 # Read CAMS file
-cli_alert_info("Reading forecast file...")
+cli_alert("Reading forecast file...")
 rst_uv <- terra::rast(path(dir_data, file_name_uv))
-cli_alert_info("Projecting raster file...")
+cli_alert("Projecting raster file...")
 rst_uv <- project(x = rst_uv, "EPSG:4326")
 
 # Zonal statistic function
@@ -991,7 +991,7 @@ agg_uv <- function(rst, x, fun) {
 }
 
 # Compute zonal mean
-cli_alert_info("Computing zonal mean...")
+cli_alert("Computing zonal mean...")
 res_mean_uv <- map(
   .x = 1:121,
   .f = agg_uv,
@@ -1002,16 +1002,16 @@ res_mean_uv <- map(
 cli_alert_success("Done!")
 
 # Check data
-cli_alert_info("Checking data...")
+cli_alert("Checking data...")
 tbl(con, tb_name_uv) |> tally()
 tbl(con, tb_name_uv) |> head()
 
 # Database disconnect
-cli_alert_info("Disconnecting database...")
+cli_alert("Disconnecting database...")
 dbDisconnect(conn = con)
 
 # Fetch INPE BD Queimadas data
-cli_alert_info("Fetch BDQueimadas / INPE data...")
+cli_alert("Fetch BDQueimadas / INPE data...")
 bdq_base_url <- "https://dataserver-coids.inpe.br/queimadas/queimadas/focos/csv/diario/America_Sul/"
 bdq_file_names <- paste0(
   "focos_diario_",
