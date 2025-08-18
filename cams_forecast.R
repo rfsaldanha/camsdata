@@ -520,7 +520,7 @@ co <- rast(x = path(dir_data, file_name_co))
 no2 <- rast(x = path(dir_data, file_name_no2))
 so2 <- rast(x = path(dir_data, file_name_so2))
 
-cli_alert("Ozone (kg/kg to kg/m3)")
+cli_alert("O3 (kg/kg to kg/m3)")
 o3_mc <- o3 * (sp[[seq(1, 121, 3)]] / (260.2 * temp[[seq(1, 121, 3)]]))
 writeCDF(
   x = o3_mc,
