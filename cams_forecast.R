@@ -515,7 +515,7 @@ retry(
 )
 cli_alert_success("Done!")
 
-cli_h2("Computing gas indicators to different units...")
+cli_h2("Compute gas indicators to different units")
 # https://forum.ecmwf.int/t/convert-mass-mixing-ratio-mmr-to-mass-concentration-or-to-volume-mixing-ratio-vmr/1253
 # https://teesing.com/en/tools/ppm-mg3-converter
 
@@ -564,7 +564,7 @@ writeCDF(
 )
 cli_alert_success("Done!")
 
-cli_h2("Computing IQAr...")
+cli_h2("Compute IQAr")
 rst_pm25 <- terra::rast(path(dir_data, file_name_pm25))
 rst_pm10 <- terra::rast(path(dir_data, file_name_pm10))
 rst_o3 <- terra::rast(path(dir_data, file_name_o3_mc))
@@ -575,7 +575,7 @@ rst_so2 <- terra::rast(path(dir_data, file_name_so2_mc))
 f_iqar <- function(x, pol) {
   sapply(X = x, FUN = riqar::iqar_pol, pol = pol)
 }
-cli_h3("Computing pollutants specific IQAr...")
+cli_h3("Compute pollutants specific IQAr")
 cli_alert("PM 2.5")
 iqar_pm25 <- app(
   x = rst_pm25 * 1e9,
@@ -630,7 +630,7 @@ iqar_so2 <- app(
 )
 cli_alert_success("Done!")
 
-cli_h3("Computing general IQAr...")
+cli_h3("Compute general IQAr")
 iqar <- NULL
 for (i in 1:41) {
   tmp <- terra::app(
@@ -653,7 +653,7 @@ iqar <- terra::rast(iqar)
 writeCDF(x = iqar, filename = path(dir_data, file_name_iqar), overwrite = TRUE)
 cli_alert_success("Done!")
 
-cli_h2("Computing wind speed...")
+cli_h2("Compute wind speed from U and V vectors...")
 wind_u <- rast(path(dir_data, file_name_wind_u))
 wind_v <- rast(path(dir_data, file_name_wind_v))
 wind_speed <- sqrt(wind_u^2 + wind_v^2) * 3.6 # km/2
@@ -664,7 +664,7 @@ writeCDF(
 )
 cli_alert_success("Done!")
 
-cli_h2("Updating municipal forecasts database...")
+cli_h2("Update municipal forecasts database")
 
 # Database connection
 cli_alert("Deleting old database...")
@@ -1286,7 +1286,7 @@ cli_alert("Disconnecting database...")
 dbDisconnect(conn = con)
 
 # Fetch INPE BD Queimadas data
-cli_alert("Fetch BDQueimadas / INPE data...")
+cli_h2("Fetch BDQueimadas / INPE data")
 bdq_base_url <- "https://dataserver-coids.inpe.br/queimadas/queimadas/focos/csv/diario/America_Sul/"
 bdq_file_names <- paste0(
   "focos_diario_",
@@ -1295,6 +1295,7 @@ bdq_file_names <- paste0(
 )
 bdq_urls <- paste0(bdq_base_url, bdq_file_names)
 
+cli_alert("Fetching data...")
 bdq_focos <- data.frame()
 for (i in bdq_urls) {
   # Try and retry download
@@ -1312,6 +1313,7 @@ for (i in bdq_urls) {
   bdq_focos <- bind_rows(bdq_focos, tmp)
   rm(tmp)
 }
+cli_alert("Saving results...")
 saveRDS(object = bdq_focos, file = path(dir_data, "bdq_focos.rds"))
 cli_alert_success("Done!")
 
