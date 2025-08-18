@@ -47,7 +47,10 @@ parallel_cores <- 4
 # 00 UTC forecast data availability guaranteed by 10:00 UTC
 # 12 UTC forecast data availability guaranteed by 22:00 UTC
 if (
-  now(tzone = "UTC") >= as_datetime(today(tzone = "UTC") + duration("22 hours"))
+  now(tzone = "UTC") >=
+    as_datetime(today(tzone = "UTC") + duration("22 hours")) |
+    now(tzone = "UTC") <=
+      as_datetime(today(tzone = "UTC") + duration("10 hours"))
 ) {
   date <- today() - 1
   time <- "12:00"
