@@ -1220,7 +1220,6 @@ cli_alert("Checking data...")
 tbl(con, tb_name_wind_speed) |> tally()
 tbl(con, tb_name_wind_speed) |> head()
 
-
 cli_h3("Aerosol")
 
 # Read CAMS file
@@ -1280,6 +1279,60 @@ tbl(con, tb_name_aerosol) |> head()
 
 cli_h3("Precipitation")
 
+# Read CAMS file
+cli_alert("Reading forecast file...")
+rst_prec <- terra::rast(path(dir_data, file_name_prec))
+cli_alert("Projecting raster file...")
+rst_prec <- project(x = rst_prec, "EPSG:4326")
+
+# Zonal statistic function
+agg_prec <- function(rst, x, fun) {
+  # Zonal statistic computation
+  tmp <- exact_extract(x = rst[[x]], y = mun, fun = fun, progress = FALSE)
+
+  # Date and time
+  seq_dates <- seq(
+    from = as_datetime(paste(date, time), format = "%Y-%m-%d %H:%M"),
+    to = as_datetime(date + duration(120, "hours")),
+    by = "1 hours"
+  )
+
+  # Table output with unit conversion and rounding
+  res <- tibble(
+    code_muni = mun$code_muni,
+    date = seq_dates[x],
+    value = round(x = tmp * 1e3, digits = 2), # m to mm
+  ) |>
+    mutate(
+      date = with_tz(date, "America/Sao_Paulo")
+    )
+
+  # Write to database
+  dbWriteTable(
+    conn = con,
+    name = tb_name_prec,
+    value = res,
+    append = TRUE
+  )
+
+  return(TRUE)
+}
+
+# Compute zonal mean
+cli_alert("Computing zonal mean...")
+res_mean_prec <- map(
+  .x = 1:121,
+  .f = agg_prec,
+  rst = rst_prec,
+  fun = "mean",
+  .progress = TRUE
+)
+cli_alert_success("Done!")
+
+# Check data
+cli_alert("Checking data...")
+tbl(con, tb_name_prec) |> tally()
+tbl(con, tb_name_prec) |> head()
 
 # Database disconnect
 cli_alert("Disconnecting database...")
