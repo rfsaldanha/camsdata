@@ -1190,7 +1190,7 @@ agg_wind_speed <- function(rst, x, fun) {
   res <- tibble(
     code_muni = mun$code_muni,
     date = seq_dates[x],
-    value = round(x = tmp * 3.6, digits = 2), # m/s to km/h
+    value = round(x = tmp, digits = 2),
   ) |>
     mutate(
       date = with_tz(date, "America/Sao_Paulo")
