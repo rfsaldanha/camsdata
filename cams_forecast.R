@@ -92,6 +92,18 @@ file_name_temp <- glue(
 file_name_uv <- glue(
   "cams_forecast_uv.nc"
 )
+file_name_wind_u <- glue(
+  "cams_forecast_wind_u.nc"
+)
+file_name_wind_v <- glue(
+  "cams_forecast_wind_v.nc"
+)
+file_name_aerosol <- glue(
+  "cams_forecast_aerosol.nc"
+)
+file_name_prec <- glue(
+  "cams_forecast_prec.nc"
+)
 file_name_iqar <- glue(
   "iqar.nc"
 )
