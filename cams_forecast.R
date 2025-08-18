@@ -575,7 +575,7 @@ rst_so2 <- terra::rast(path(dir_data, file_name_so2_mc))
 f_iqar <- function(x, pol) {
   sapply(X = x, FUN = riqar::iqar_pol, pol = pol)
 }
-cli_h3("Computing pollutants specific IQAr")
+cli_h3("Computing pollutants specific IQAr...")
 cli_alert("PM 2.5")
 iqar_pm25 <- app(
   x = rst_pm25 * 1e9,
