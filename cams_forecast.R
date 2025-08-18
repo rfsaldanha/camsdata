@@ -1,5 +1,6 @@
 # Packages
 cli::cli_h1("CAMS forecast data download routine")
+cli::cli_alert_info("Job start: {now()}")
 cli::cli_h2("Environment setup")
 cli::cli_alert_info("Loading packages...")
 library(ecmwfr)
@@ -20,7 +21,7 @@ library(DBI)
 library(duckdb)
 cli_alert_success("Done!")
 
-cli::cli_alert_info("Setting environment...")
+cli_alert_info("Setting environment...")
 # Bounding box
 bbox <- c(13.49, -83.15, -56.69, -32.20)
 
@@ -232,7 +233,7 @@ request_uv <- list(
 )
 
 # Token
-cli::cli_alert_info("Retrieving access token...")
+cli_alert_info("Retrieving access token...")
 wf_set_key(key = Sys.getenv("era5_API_Key"))
 
 cli_alert_success("Done!")
@@ -240,7 +241,7 @@ cli_alert_success("Done!")
 cli_h2("Request forecasts from CAMS")
 
 # Download files with retry
-cli_h3("PM 2.5")
+cli_alert_info("PM 2.5")
 retry(
   expr = {
     wf_request(
@@ -255,7 +256,7 @@ retry(
 )
 cli_alert_success("Done!")
 
-cli_h3("PM 10")
+cli_alert_info("PM 10")
 retry(
   expr = {
     wf_request(
@@ -270,7 +271,7 @@ retry(
 )
 cli_alert_success("Done!")
 
-cli_h3("Surface pressure")
+cli_alert_info("Surface pressure")
 retry(
   expr = {
     wf_request(
@@ -285,7 +286,7 @@ retry(
 )
 cli_alert_success("Done!")
 
-cli_h3("O3")
+cli_alert_info("O3")
 retry(
   expr = {
     wf_request(
@@ -300,7 +301,7 @@ retry(
 )
 cli_alert_success("Done!")
 
-cli_h3("CO")
+cli_alert_info("CO")
 retry(
   expr = {
     wf_request(
@@ -315,7 +316,7 @@ retry(
 )
 cli_alert_success("Done!")
 
-cli_h3("NO2")
+cli_alert_info("NO2")
 retry(
   expr = {
     wf_request(
@@ -330,7 +331,7 @@ retry(
 )
 cli_alert_success("Done!")
 
-cli_h3("SO2")
+cli_alert_info("SO2")
 retry(
   expr = {
     wf_request(
@@ -345,7 +346,7 @@ retry(
 )
 cli_alert_success("Done!")
 
-cli_h3("Temperature")
+cli_alert_info("Temperature")
 retry(
   expr = {
     wf_request(
@@ -375,7 +376,7 @@ retry(
 )
 cli_alert_success("Done!")
 
-cli_h2("Computing gas indicators to different units")
+cli_h2("Computing gas indicators to different units...")
 # https://forum.ecmwf.int/t/convert-mass-mixing-ratio-mmr-to-mass-concentration-or-to-volume-mixing-ratio-vmr/1253
 # https://teesing.com/en/tools/ppm-mg3-converter
 
@@ -386,7 +387,7 @@ co <- rast(x = path(dir_data, file_name_co))
 no2 <- rast(x = path(dir_data, file_name_no2))
 so2 <- rast(x = path(dir_data, file_name_so2))
 
-cli_h3("Ozone (kg/kg to kg/m3)")
+cli_alert_info("Ozone (kg/kg to kg/m3)")
 o3_mc <- o3 * (sp[[seq(1, 121, 3)]] / (260.2 * temp[[seq(1, 121, 3)]]))
 writeCDF(
   x = o3_mc,
@@ -395,7 +396,7 @@ writeCDF(
 )
 cli_alert_success("Done!")
 
-cli_h3("CO (kg/kg to PPM)")
+cli_alert_info("CO (kg/kg to PPM)")
 co_mc <- co * (sp[[seq(1, 121, 3)]] / (296.84 * temp[[seq(1, 121, 3)]])) # kg/kg to kg/m3
 co_mc <- co_mc * 1e6 # kg/m3 to mg/m3
 co_mc <- 24.45 * co_mc / 28.01 # mg/m3 to PPM
@@ -406,7 +407,7 @@ writeCDF(
 )
 cli_alert_success("Done!")
 
-cli_h3("NO2 (kg/kg to kg/m3)")
+cli_alert_info("NO2 (kg/kg to kg/m3)")
 no2_mc <- no2 * (sp[[seq(1, 121, 3)]] / (180.73 * temp[[seq(1, 121, 3)]]))
 writeCDF(
   x = no2_mc,
@@ -415,7 +416,7 @@ writeCDF(
 )
 cli_alert_success("Done!")
 
-cli_h3("SO2 (kg/kg to kg/m3)")
+cli_alert_info("SO2 (kg/kg to kg/m3)")
 so2_mc <- so2 * (sp[[seq(1, 121, 3)]] / (129.78 * temp[[seq(1, 121, 3)]]))
 writeCDF(
   x = so2_mc,
@@ -424,7 +425,7 @@ writeCDF(
 )
 cli_alert_success("Done!")
 
-cli_h2("Computing IQAr")
+cli_h2("Computing IQAr...")
 rst_pm25 <- terra::rast(path(dir_data, file_name_pm25))
 rst_pm10 <- terra::rast(path(dir_data, file_name_pm10))
 rst_o3 <- terra::rast(path(dir_data, file_name_o3_mc))
@@ -435,42 +436,53 @@ rst_so2 <- terra::rast(path(dir_data, file_name_so2_mc))
 f_iqar <- function(x, pol) {
   sapply(X = x, FUN = riqar::iqar_pol, pol = pol)
 }
-cli_alert_info("Pollutants specific IQAr")
+cli_h3("Computing pollutants specific IQAr")
+cli_alert_info("PM 2.5")
 iqar_pm25 <- app(
   x = rst_pm25 * 1e9,
   fun = f_iqar,
   pol = "pm2.5",
   cores = 4
 )
+cli_alert_success("Done!")
 
+cli_alert_info("PM 10")
 iqar_pm10 <- app(
   x = rst_pm10 * 1e9,
   fun = f_iqar,
   pol = "pm10",
   cores = 4
 )
+cli_alert_success("Done!")
 
+cli_alert_info("O3")
 iqar_o3 <- app(
   x = rst_o3 * 1e9,
   fun = f_iqar,
   pol = "o3",
   cores = 4
 )
+cli_alert_success("Done!")
 
+cli_alert_info("CO")
 iqar_co <- app(
   x = rst_co,
   fun = f_iqar,
   pol = "co",
   cores = 4
 )
+cli_alert_success("Done!")
 
+cli_alert_info("NO2")
 iqar_no2 <- app(
   x = rst_no2 * 1e9,
   fun = f_iqar,
   pol = "no2",
   cores = 4
 )
+cli_alert_success("Done!")
 
+cli_alert_info("SO2")
 iqar_so2 <- app(
   x = rst_so2 * 1e9,
   fun = f_iqar,
@@ -479,7 +491,7 @@ iqar_so2 <- app(
 )
 cli_alert_success("Done!")
 
-cli_alert_info("Computing IQAr")
+cli_h3("Computing general IQAr...")
 iqar <- NULL
 for (i in 1:41) {
   tmp <- terra::app(
@@ -502,7 +514,7 @@ iqar <- terra::rast(iqar)
 writeCDF(x = iqar, filename = path(dir_data, file_name_iqar), overwrite = TRUE)
 cli_alert_success("Done!")
 
-cli_h2("Update forecasts database")
+cli_h2("Updating forecasts database...")
 
 # Database connection
 cli_alert_info("Deleting old database...")
@@ -511,6 +523,7 @@ if (file_exists(path(dir_data, "cams_forecast.duckdb"))) {
 }
 cli_alert_info("Connecting to database...")
 con <- dbConnect(duckdb(), path(dir_data, "cams_forecast.duckdb"))
+# Table names
 tb_name_iqar <- "iqar_forecast"
 tb_name_pm25 <- "pm25_mun_forecast"
 tb_name_pm10 <- "pm10_mun_forecast"
@@ -1027,4 +1040,5 @@ for (i in bdq_urls) {
 saveRDS(object = bdq_focos, file = path(dir_data, "bdq_focos.rds"))
 cli_alert_success("Done!")
 
+cli_alert_info("Job end: {now()}")
 cli_h1("END")
