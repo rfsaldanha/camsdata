@@ -21,7 +21,6 @@ suppressMessages({
   library(DBI)
   library(duckdb)
 })
-
 cli_alert_success("Done!")
 
 cli_alert("Setting environment...")
@@ -46,7 +45,6 @@ if (
   date <- today()
   time <- "00:00"
 }
-
 
 cli_alert_info("Update reference: {date} {time}")
 
