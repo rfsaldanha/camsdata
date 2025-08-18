@@ -39,6 +39,9 @@ leadtime_hour_level <- as.character(seq(0, 120, 3))
 retry_max_tries <- 100
 retry_times <- 1
 
+# Parallel cores
+parallel_cores <- 4
+
 # Set update reference time
 if (
   now(tzone = "UTC") < as_datetime(today(tzone = "UTC") + duration("10 hours"))
@@ -578,7 +581,7 @@ iqar_pm25 <- app(
   x = rst_pm25 * 1e9,
   fun = f_iqar,
   pol = "pm2.5",
-  cores = 4
+  cores = parallel_cores
 )
 cli_alert_success("Done!")
 
@@ -587,7 +590,7 @@ iqar_pm10 <- app(
   x = rst_pm10 * 1e9,
   fun = f_iqar,
   pol = "pm10",
-  cores = 4
+  cores = parallel_cores
 )
 cli_alert_success("Done!")
 
@@ -596,7 +599,7 @@ iqar_o3 <- app(
   x = rst_o3 * 1e9,
   fun = f_iqar,
   pol = "o3",
-  cores = 4
+  cores = parallel_cores
 )
 cli_alert_success("Done!")
 
@@ -605,7 +608,7 @@ iqar_co <- app(
   x = rst_co,
   fun = f_iqar,
   pol = "co",
-  cores = 4
+  cores = parallel_cores
 )
 cli_alert_success("Done!")
 
@@ -614,7 +617,7 @@ iqar_no2 <- app(
   x = rst_no2 * 1e9,
   fun = f_iqar,
   pol = "no2",
-  cores = 4
+  cores = parallel_cores
 )
 cli_alert_success("Done!")
 
@@ -623,7 +626,7 @@ iqar_so2 <- app(
   x = rst_so2 * 1e9,
   fun = f_iqar,
   pol = "so2",
-  cores = 4
+  cores = parallel_cores
 )
 cli_alert_success("Done!")
 
