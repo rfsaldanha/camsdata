@@ -45,7 +45,7 @@ if (
 }
 
 
-cli_alert_info("Update reference: {date} {time}")
+cli_alert("Update reference: {date} {time}")
 
 # File names
 file_name_pm25 <- glue(
