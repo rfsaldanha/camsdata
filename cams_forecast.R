@@ -479,6 +479,21 @@ retry(
 )
 cli_alert_success("Done!")
 
+cli_h3("Aerosol")
+retry(
+  expr = {
+    wf_request(
+      request = request_aerosol,
+      transfer = TRUE,
+      path = dir_data
+    )
+  },
+  interval = retry_times,
+  max_tries = retry_max_tries,
+  until = ~ is_file(as.character(.))
+)
+cli_alert_success("Done!")
+
 cli_h2("Computing gas indicators to different units...")
 # https://forum.ecmwf.int/t/convert-mass-mixing-ratio-mmr-to-mass-concentration-or-to-volume-mixing-ratio-vmr/1253
 # https://teesing.com/en/tools/ppm-mg3-converter
