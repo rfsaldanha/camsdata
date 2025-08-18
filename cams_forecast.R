@@ -689,9 +689,9 @@ tb_name_no2 <- "no2_mun_forecast"
 tb_name_so2 <- "so2_mun_forecast"
 tb_name_temp <- "temp_mun_forecast"
 tb_name_uv <- "uv_mun_forecast"
-tb_name_wind_speed <- "uv_mun_wind_speed"
-tb_name_aerosol <- "uv_mun_aerosol"
-tb_name_prec <- "uv_mun_prec"
+tb_name_wind_speed <- "wind_speed_mun_forecast"
+tb_name_aerosol <- "aerosol_mun_forecast"
+tb_name_prec <- "prec_mun_forecast"
 
 cli_h3("IQAr")
 
