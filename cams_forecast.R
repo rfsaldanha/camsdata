@@ -1160,6 +1160,128 @@ tbl(con, tb_name_uv) |> head()
 cli_alert("Disconnecting database...")
 dbDisconnect(conn = con)
 
+cli_h3("Wind speed")
+
+# Read CAMS file
+cli_alert("Reading forecast file...")
+rst_wind_speed <- terra::rast(path(dir_data, file_name_wind_speed))
+cli_alert("Projecting raster file...")
+rst_wind_speed <- project(x = rst_wind_speed, "EPSG:4326")
+
+# Zonal statistic function
+agg_wind_speed <- function(rst, x, fun) {
+  # Zonal statistic computation
+  tmp <- exact_extract(x = rst[[x]], y = mun, fun = fun, progress = FALSE)
+
+  # Date and time
+  seq_dates <- seq(
+    from = as_datetime(paste(date, time), format = "%Y-%m-%d %H:%M"),
+    to = as_datetime(date + duration(120, "hours")),
+    by = "1 hours"
+  )
+
+  # Table output with unit conversion and rounding
+  res <- tibble(
+    code_muni = mun$code_muni,
+    date = seq_dates[x],
+    value = round(x = tmp * 3.6, digits = 2), # m/s to km/h
+  ) |>
+    mutate(
+      date = with_tz(date, "America/Sao_Paulo")
+    )
+
+  # Write to database
+  dbWriteTable(
+    conn = con,
+    name = tb_name_wind_speed,
+    value = res,
+    append = TRUE
+  )
+
+  return(TRUE)
+}
+
+# Compute zonal mean
+cli_alert("Computing zonal mean...")
+res_mean_wind_speed <- map(
+  .x = 1:121,
+  .f = agg_wind_speed,
+  rst = rst_wind_speed,
+  fun = "mean",
+  .progress = TRUE
+)
+cli_alert_success("Done!")
+
+# Check data
+cli_alert("Checking data...")
+tbl(con, tb_name_wind_speed) |> tally()
+tbl(con, tb_name_wind_speed) |> head()
+
+
+cli_h3("Aerosol")
+
+# Read CAMS file
+cli_alert("Reading forecast file...")
+rst_aerosol <- terra::rast(path(dir_data, file_name_aerosol))
+cli_alert("Projecting raster file...")
+rst_aerosol <- project(x = rst_aerosol, "EPSG:4326")
+
+# Zonal statistic function
+agg_aerosol <- function(rst, x, fun) {
+  # Zonal statistic computation
+  tmp <- exact_extract(x = rst[[x]], y = mun, fun = fun, progress = FALSE)
+
+  # Date and time
+  seq_dates <- seq(
+    from = as_datetime(paste(date, time), format = "%Y-%m-%d %H:%M"),
+    to = as_datetime(date + duration(120, "hours")),
+    by = "1 hours"
+  )
+
+  # Table output with unit conversion and rounding
+  res <- tibble(
+    code_muni = mun$code_muni,
+    date = seq_dates[x],
+    value = round(x = tmp, digits = 2),
+  ) |>
+    mutate(
+      date = with_tz(date, "America/Sao_Paulo")
+    )
+
+  # Write to database
+  dbWriteTable(
+    conn = con,
+    name = tb_name_aerosol,
+    value = res,
+    append = TRUE
+  )
+
+  return(TRUE)
+}
+
+# Compute zonal mean
+cli_alert("Computing zonal mean...")
+res_mean_aerosol <- map(
+  .x = 1:121,
+  .f = agg_aerosol,
+  rst = rst_aerosol,
+  fun = "mean",
+  .progress = TRUE
+)
+cli_alert_success("Done!")
+
+# Check data
+cli_alert("Checking data...")
+tbl(con, tb_name_aerosol) |> tally()
+tbl(con, tb_name_aerosol) |> head()
+
+cli_h3("Precipitation")
+
+
+# Database disconnect
+cli_alert("Disconnecting database...")
+dbDisconnect(conn = con)
+
 # Fetch INPE BD Queimadas data
 cli_alert("Fetch BDQueimadas / INPE data...")
 bdq_base_url <- "https://dataserver-coids.inpe.br/queimadas/queimadas/focos/csv/diario/America_Sul/"
