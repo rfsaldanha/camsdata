@@ -280,7 +280,7 @@ request_wind_v <- list(
 ## Aerosol
 request_aerosol <- list(
   dataset_short_name = "cams-global-atmospheric-composition-forecasts",
-  variable = "total_aerosol_optical_depth_550nm",
+  variable = "organic_matter_aerosol_optical_depth_550nm",
   date = glue("{date}/{date}"),
   time = time,
   leadtime_hour = leadtime_hour,
