@@ -681,7 +681,7 @@ cli_alert("Connecting to database...")
 con <- dbConnect(duckdb(), path(dir_data, "cams_forecast.duckdb"))
 
 # Table names
-tb_name_iqar <- "iqar_forecast"
+tb_name_iqar <- "iqar_mun_forecast"
 tb_name_pm25 <- "pm25_mun_forecast"
 tb_name_pm10 <- "pm10_mun_forecast"
 tb_name_o3 <- "o3_mun_forecast"
