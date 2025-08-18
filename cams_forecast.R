@@ -44,8 +44,8 @@ parallel_cores <- 4
 
 # Set update reference time
 # https://confluence.ecmwf.int/display/CKB/CAMS%3A+Global+atmospheric+composition+forecast+data+documentation#heading-DataavailabilityHHMM
-# 00 UTC forecast data availability guaranteed by 10:00 UTC
-# 12 UTC forecast data availability guaranteed by 22:00 UTC
+# 00 UTC forecast data availability guaranteed by 10:00 UTC -> update at ~7am BR
+# 12 UTC forecast data availability guaranteed by 22:00 UTC -> update at ~7pm BR
 if (
   now(tzone = "UTC") >=
     as_datetime(today(tzone = "UTC") + duration("22 hours")) |
