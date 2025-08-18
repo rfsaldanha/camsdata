@@ -249,6 +249,34 @@ request_uv <- list(
   target = file_name_uv
 )
 
+## Wind U
+request_wind_u <- list(
+  dataset_short_name = "cams-global-atmospheric-composition-forecasts",
+  variable = "10m_u_component_of_wind",
+  date = glue("{date}/{date}"),
+  time = time,
+  leadtime_hour = leadtime_hour,
+  type = "forecast",
+  data_format = "netcdf",
+  download_format = "unarchived",
+  area = bbox,
+  target = file_name_wind_u
+)
+
+## Wind V
+request_wind_v <- list(
+  dataset_short_name = "cams-global-atmospheric-composition-forecasts",
+  variable = "10m_v_component_of_wind",
+  date = glue("{date}/{date}"),
+  time = time,
+  leadtime_hour = leadtime_hour,
+  type = "forecast",
+  data_format = "netcdf",
+  download_format = "unarchived",
+  area = bbox,
+  target = file_name_wind_v
+)
+
 # Token
 cli_alert("Retrieving access token...")
 wf_set_key(key = Sys.getenv("era5_API_Key"))
