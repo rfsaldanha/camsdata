@@ -35,6 +35,10 @@ dir_data <- "/dados/home/rfsaldanha/camsdata/forecast_data/"
 leadtime_hour <- as.character(0:120)
 leadtime_hour_level <- as.character(seq(0, 120, 3))
 
+# Retry
+retry_max_tries <- 100
+retry_times <- 1
+
 # Set update reference time
 if (
   now(tzone = "UTC") < as_datetime(today(tzone = "UTC") + duration("10 hours"))
@@ -251,8 +255,8 @@ retry(
       path = dir_data
     )
   },
-  interval = 1,
-  max_tries = 100,
+  interval = retry_times,
+  max_tries = retry_max_tries,
   until = ~ is_file(as.character(.))
 )
 cli_alert_success("Done!")
@@ -266,8 +270,8 @@ retry(
       path = dir_data
     )
   },
-  interval = 1,
-  max_tries = 100,
+  interval = retry_times,
+  max_tries = retry_max_tries,
   until = ~ is_file(as.character(.))
 )
 cli_alert_success("Done!")
@@ -281,8 +285,8 @@ retry(
       path = dir_data
     )
   },
-  interval = 1,
-  max_tries = 100,
+  interval = retry_times,
+  max_tries = retry_max_tries,
   until = ~ is_file(as.character(.))
 )
 cli_alert_success("Done!")
@@ -296,8 +300,8 @@ retry(
       path = dir_data
     )
   },
-  interval = 1,
-  max_tries = 100,
+  interval = retry_times,
+  max_tries = retry_max_tries,
   until = ~ is_file(as.character(.))
 )
 cli_alert_success("Done!")
@@ -311,8 +315,8 @@ retry(
       path = dir_data
     )
   },
-  interval = 1,
-  max_tries = 100,
+  interval = retry_times,
+  max_tries = retry_max_tries,
   until = ~ is_file(as.character(.))
 )
 cli_alert_success("Done!")
@@ -326,8 +330,8 @@ retry(
       path = dir_data
     )
   },
-  interval = 1,
-  max_tries = 100,
+  interval = retry_times,
+  max_tries = retry_max_tries,
   until = ~ is_file(as.character(.))
 )
 cli_alert_success("Done!")
@@ -341,8 +345,8 @@ retry(
       path = dir_data
     )
   },
-  interval = 1,
-  max_tries = 100,
+  interval = retry_times,
+  max_tries = retry_max_tries,
   until = ~ is_file(as.character(.))
 )
 cli_alert_success("Done!")
@@ -356,8 +360,8 @@ retry(
       path = dir_data
     )
   },
-  interval = 1,
-  max_tries = 100,
+  interval = retry_times,
+  max_tries = retry_max_tries,
   until = ~ is_file(as.character(.))
 )
 cli_alert_success("Done!")
@@ -371,8 +375,8 @@ retry(
       path = dir_data
     )
   },
-  interval = 1,
-  max_tries = 100,
+  interval = retry_times,
+  max_tries = retry_max_tries,
   until = ~ is_file(as.character(.))
 )
 cli_alert_success("Done!")
@@ -1030,8 +1034,8 @@ for (i in bdq_urls) {
         filter(satelite %in% c("AQUA_M-M", "AQUA_M-T")) |>
         select(id, lat, lon, data_hora_gmt)
     },
-    interval = 1,
-    max_tries = 5,
+    interval = retry_times,
+    max_tries = retry_max_tries,
     until = ~ is.data.frame(.)
   )
 
