@@ -277,6 +277,20 @@ request_wind_v <- list(
   target = file_name_wind_v
 )
 
+## Aerosol
+request_aerosol <- list(
+  dataset_short_name = "cams-global-atmospheric-composition-forecasts",
+  variable = "total_aerosol_optical_depth_550nm",
+  date = glue("{date}/{date}"),
+  time = time,
+  leadtime_hour = leadtime_hour,
+  type = "forecast",
+  data_format = "netcdf",
+  download_format = "unarchived",
+  area = bbox,
+  target = file_name_aerosol
+)
+
 # Token
 cli_alert("Retrieving access token...")
 wf_set_key(key = Sys.getenv("era5_API_Key"))
