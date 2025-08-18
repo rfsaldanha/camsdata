@@ -98,6 +98,9 @@ file_name_wind_u <- glue(
 file_name_wind_v <- glue(
   "cams_forecast_wind_v.nc"
 )
+file_name_wind_speed <- glue(
+  "cams_forecast_wind_speed.nc"
+)
 file_name_aerosol <- glue(
   "cams_forecast_aerosol.nc"
 )
@@ -647,7 +650,18 @@ iqar <- terra::rast(iqar)
 writeCDF(x = iqar, filename = path(dir_data, file_name_iqar), overwrite = TRUE)
 cli_alert_success("Done!")
 
-cli_h2("Updating forecasts database...")
+cli_h2("Computing wind speed...")
+wind_u <- rast(path(dir_data, file_name_wind_u))
+wind_v <- rast(path(dir_data, file_name_wind_v))
+wind_speed <- sqrt(wind_u^2 + wind_v^2) * 3.6 # km/2
+writeCDF(
+  x = wind_speed,
+  filename = path(dir_data, file_name_wind_speed),
+  overwrite = TRUE
+)
+cli_alert_success("Done!")
+
+cli_h2("Updating municipal forecasts database...")
 
 # Database connection
 cli_alert("Deleting old database...")
@@ -666,6 +680,9 @@ tb_name_no2 <- "no2_mun_forecast"
 tb_name_so2 <- "so2_mun_forecast"
 tb_name_temp <- "temp_mun_forecast"
 tb_name_uv <- "uv_mun_forecast"
+tb_name_wind_speed <- "uv_mun_wind_speed"
+tb_name_aerosol <- "uv_mun_aerosol"
+tb_name_prec <- "uv_mun_prec"
 
 cli_h3("IQAr")
 
