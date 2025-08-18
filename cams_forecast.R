@@ -440,7 +440,7 @@ retry(
 )
 cli_alert_success("Done!")
 
-cli_h3("UV")
+cli_alert("UV")
 retry(
   expr = {
     wf_request(
@@ -455,7 +455,7 @@ retry(
 )
 cli_alert_success("Done!")
 
-cli_h3("Wind U")
+cli_alert("Wind U")
 retry(
   expr = {
     wf_request(
@@ -470,7 +470,7 @@ retry(
 )
 cli_alert_success("Done!")
 
-cli_h3("Wind V")
+cli_alert("Wind V")
 retry(
   expr = {
     wf_request(
@@ -485,7 +485,7 @@ retry(
 )
 cli_alert_success("Done!")
 
-cli_h3("Aerosol")
+cli_alert("Aerosol")
 retry(
   expr = {
     wf_request(
@@ -500,7 +500,7 @@ retry(
 )
 cli_alert_success("Done!")
 
-cli_h3("Precipitation")
+cli_alert("Precipitation")
 retry(
   expr = {
     wf_request(
@@ -1159,10 +1159,6 @@ cli_alert("Checking data...")
 tbl(con, tb_name_uv) |> tally()
 tbl(con, tb_name_uv) |> head()
 
-# Database disconnect
-cli_alert("Disconnecting database...")
-dbDisconnect(conn = con)
-
 cli_h3("Wind speed")
 
 # Read CAMS file
@@ -1337,6 +1333,7 @@ tbl(con, tb_name_prec) |> head()
 # Database disconnect
 cli_alert("Disconnecting database...")
 dbDisconnect(conn = con)
+
 
 # Fetch INPE BD Queimadas data
 cli_h2("Fetch BDQueimadas / INPE data")
