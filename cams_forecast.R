@@ -679,6 +679,7 @@ if (file_exists(path(dir_data, "cams_forecast.duckdb"))) {
 }
 cli_alert("Connecting to database...")
 con <- dbConnect(duckdb(), path(dir_data, "cams_forecast.duckdb"))
+
 # Table names
 tb_name_iqar <- "iqar_forecast"
 tb_name_pm25 <- "pm25_mun_forecast"
