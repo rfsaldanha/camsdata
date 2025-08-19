@@ -13,8 +13,8 @@ u_var = 'u10'
 v_var = 'v10'
 
 # set header variables for wind
-nx = dataset_u.variables[u_var].shape[3]
-ny = dataset_u.variables[u_var].shape[2]
+nx = dataset_u.variables[u_var].shape[3] # Columns
+ny = dataset_u.variables[u_var].shape[2] # Lines
 dx = .4
 dy = .4
 tot = nx * ny
