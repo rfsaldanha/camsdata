@@ -1,9 +1,9 @@
 rst_u <- terra::rast("forecast_data/cams_forecast_wind_u.nc")
 rst_v <- terra::rast("forecast_data/cams_forecast_wind_v.nc")
 
-depth <- 1
-n_round <- 2
-path <- "forecast_data/wind_teste.json"
+# depth <- 1
+# n_round <- 2
+# path <- "forecast_data/wind_teste.json"
 
 wind2json <- function(rst_u, rst_v, depth, n_round = 2, path) {
   # Header variables
@@ -69,4 +69,15 @@ wind2json <- function(rst_u, rst_v, depth, n_round = 2, path) {
 
   # Write
   write(x = wind_json, file = path)
+
+  # Return
+  return(TRUE)
 }
+
+wind2json(
+  rst_u = rst_u,
+  rst_v = rst_v,
+  depth = 1,
+  n_round = 2,
+  path = "forecast_data/wind_teste2.json"
+)
