@@ -17,12 +17,12 @@ wind2json <- function(rst_u, rst_v, depth, n_round = 2, path) {
   }
 
   # Header variables
-  nx <- terra::ncol(rst_u)
-  ny <- terra::nrow(rst_u)
-  dx <- terra::res(rst_u)[1]
-  dy <- terra::res(rst_u)[2]
-  tot <- nx * ny
-  la1 <- terra::ext(rst_u)[4]
+  nx <- terra::ncol(rst_u) # Number of rows
+  ny <- terra::nrow(rst_u) # Number of columns
+  dx <- terra::res(rst_u)[1] # X spatial resolution, in degrees
+  dy <- terra::res(rst_u)[2] # Y spatial resolution, in degrees
+  tot <- nx * ny # Number of observations
+  la1 <- terra::ext(rst_u)[4] # Bounding box
   lo1 <- terra::ext(rst_u)[1]
   la2 <- terra::ext(rst_u)[3]
   lo2 <- terra::ext(rst_u)[2]
