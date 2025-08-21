@@ -11,7 +11,6 @@
 library(leaflet)
 library(leaflet.extras2)
 library(terra)
-library(magrittr)
 
 rst_iqar <- rast("forecast_data/iqar.nc")
 rst_iqar <- project(x = rst_iqar, "EPSG:3857")
@@ -35,15 +34,24 @@ pal_aerosol <- colorBin(
 
 content <- "forecast_data/wind_teste2.json"
 
+# opts <- velocityOptions(
+#   speedUnit = "m/s",
+#   colorScale = colorRampPalette(c("gray50", "black"), alpha = TRUE)(5),
+#   minVelocity = 0,
+#   maxVelocity = 36,
+#   velocityScale = 0.01
+# )
+
 opts <- velocityOptions(
-  speedUnit = "m/s",
-  colorScale = colorRampPalette(c("gray50", "black"), alpha = TRUE)(8),
+  speedUnit = "k/h",
+  colorScale = colorRampPalette(c("gray50", "black"), alpha = TRUE)(5),
   minVelocity = 0,
-  maxVelocity = 36,
-  velocityScale = 0.01
+  maxVelocity = 100,
+  velocityScale = 0.002
 )
 
-leaflet() %>%
+
+leaflet() |>
   addTiles(group = "base") %>%
   addProviderTiles(providers$OpenTopoMap, group = "topo") %>%
   addVelocity(
@@ -51,7 +59,7 @@ leaflet() %>%
     group = "velo",
     layerId = "veloid",
     options = opts
-  ) %>%
+  ) |>
   addRasterImage(
     x = rst_iqar[[1]],
     opacity = .7,
@@ -59,7 +67,7 @@ leaflet() %>%
     layerId = "iqar",
     project = FALSE,
     group = "iqar"
-  ) %>%
+  ) |>
   addRasterImage(
     x = rst_aerosol[[1]],
     opacity = .7,

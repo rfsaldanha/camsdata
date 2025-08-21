@@ -1,7 +1,7 @@
 rst_u <- terra::rast("forecast_data/cams_forecast_wind_u.nc")
 rst_v <- terra::rast("forecast_data/cams_forecast_wind_v.nc")
 
-wind2json <- function(rst_u, rst_v, depth, n_round = 2, path) {
+wind2json <- function(rst_u, rst_v, depth, n_round = 2, ms2kmh = TRUE, path) {
   # Verify compatibility between rst files
   if (
     !any(
@@ -26,17 +26,25 @@ wind2json <- function(rst_u, rst_v, depth, n_round = 2, path) {
   lo1 <- terra::ext(rst_u)[1]
   la2 <- terra::ext(rst_u)[3]
   lo2 <- terra::ext(rst_u)[2]
+  parameterUnit <- "m.s-1"
 
   # Data
   data_u <- round(as.vector(t(terra::as.matrix(rst_u[[depth]]))), n_round)
   data_v <- round(as.vector(t(terra::as.matrix(rst_v[[depth]]))), n_round)
+
+  # Speed conversion
+  if (ms2kmh) {
+    data_u <- data_u * 3.6
+    data_v <- data_v * 3.6
+    parameterUnit <- "km.h-1"
+  }
 
   # List
   wind_list <- list(
     list(
       "header" = list(
         "parameterNumberName" = "eastward_wind",
-        "parameterUnit" = "m.s-1",
+        "parameterUnit" = parameterUnit,
         "parameterNumber" = 2,
         "parameterCategory" = 2,
         "nx" = nx,
@@ -55,7 +63,7 @@ wind2json <- function(rst_u, rst_v, depth, n_round = 2, path) {
     list(
       "header" = list(
         "parameterNumberName" = "northward_wind",
-        "parameterUnit" = "m.s-1",
+        "parameterUnit" = parameterUnit,
         "parameterNumber" = 3,
         "parameterCategory" = 2,
         "nx" = nx,
@@ -88,5 +96,6 @@ wind2json(
   rst_v = rst_v,
   depth = 10,
   n_round = 2,
+  ms2kmh = TRUE,
   path = "forecast_data/wind_teste2.json"
 )
