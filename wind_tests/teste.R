@@ -10,6 +10,28 @@
 
 library(leaflet)
 library(leaflet.extras2)
+library(terra)
+library(magrittr)
+
+rst_iqar <- rast("forecast_data/iqar.nc")
+rst_iqar <- project(x = rst_iqar, "EPSG:3857")
+
+rst_aerosol <- rast("forecast_data/cams_forecast_aerosol.nc")
+rst_aerosol <- project(x = rst_aerosol, "EPSG:3857")
+
+pal_iqar <- colorBin(
+  palette = c("green", "yellow", "orange", "red", "purple"),
+  bins = c(0, 40, 80, 120, 200, Inf),
+  na.color = NA,
+  reverse = FALSE
+)
+
+pal_aerosol <- colorBin(
+  palette = "magma",
+  bins = c(.1, .2, .3, .4, .6, .8, 1, 3, Inf),
+  na.color = NA,
+  reverse = TRUE
+)
 
 # content <- "~/Downloads/leaflet-velocity-master/demo/wind-gbr.json"
 
@@ -18,7 +40,7 @@ content <- "forecast_data/wind_teste2.json"
 
 opts <- velocityOptions(
   speedUnit = "m/s",
-  colorScale = colorRampPalette(c("gray50", "red"), alpha = TRUE)(8),
+  colorScale = colorRampPalette(c("gray50", "black"), alpha = TRUE)(8),
   minVelocity = 0,
   maxVelocity = 36,
   velocityScale = 0.01
@@ -33,4 +55,23 @@ leaflet() %>%
     layerId = "veloid",
     options = opts
   ) %>%
-  addLayersControl(baseGroups = c("topo", "base"), overlayGroups = "velo")
+  addRasterImage(
+    x = rst_iqar[[1]],
+    opacity = .7,
+    colors = pal_iqar,
+    layerId = "iqar",
+    project = FALSE,
+    group = "iqar"
+  ) %>%
+  addRasterImage(
+    x = rst_aerosol[[1]],
+    opacity = .7,
+    colors = pal_aerosol,
+    layerId = "aerosol",
+    project = FALSE,
+    group = "aerosol"
+  ) %>%
+  addLayersControl(
+    baseGroups = c("topo", "base"),
+    overlayGroups = c("velo", "iqar", "aerosol")
+  )
