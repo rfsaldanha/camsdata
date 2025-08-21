@@ -33,9 +33,6 @@ pal_aerosol <- colorBin(
   reverse = TRUE
 )
 
-# content <- "~/Downloads/leaflet-velocity-master/demo/wind-gbr.json"
-
-# content <- "forecast_data/wind.json"
 content <- "forecast_data/wind_teste2.json"
 
 opts <- velocityOptions(

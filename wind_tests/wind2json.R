@@ -86,7 +86,7 @@ wind2json <- function(rst_u, rst_v, depth, n_round = 2, path) {
 wind2json(
   rst_u = rst_u,
   rst_v = rst_v,
-  depth = 1,
+  depth = 10,
   n_round = 2,
   path = "forecast_data/wind_teste2.json"
 )
