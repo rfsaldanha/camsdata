@@ -60,7 +60,6 @@ wind2json <- function(rst_u, rst_v, depth, n_round = 2, path) {
   )
 
   # Json
-  # wind_json <- rjson::toJSON(x = wind_u_list)
   wind_json <- jsonlite::toJSON(x = wind_list, auto_unbox = TRUE)
 
   # Write
