@@ -43,25 +43,23 @@ wind2json <- function(rst_u, rst_v, depth, n_round = 2, path) {
       "data" = data_u
     ),
     list(
-      list(
-        "header" = list(
-          "parameterNumberName" = "northward_wind",
-          "parameterUnit" = "m.s-1",
-          "parameterNumber" = 3,
-          "parameterCategory" = 2,
-          "nx" = nx,
-          "ny" = ny,
-          "numberPoints" = tot,
-          "dx" = dx,
-          "dy" = dy,
-          "la1" = la1,
-          "lo1" = lo1,
-          "la2" = la2,
-          "lo2" = lo2,
-          "refTime" = "2017-02-01 23:00:00"
-        ),
-        "data" = data_v
-      )
+      "header" = list(
+        "parameterNumberName" = "northward_wind",
+        "parameterUnit" = "m.s-1",
+        "parameterNumber" = 3,
+        "parameterCategory" = 2,
+        "nx" = nx,
+        "ny" = ny,
+        "numberPoints" = tot,
+        "dx" = dx,
+        "dy" = dy,
+        "la1" = la1,
+        "lo1" = lo1,
+        "la2" = la2,
+        "lo2" = lo2,
+        "refTime" = "2017-02-01 23:00:00"
+      ),
+      "data" = data_v
     )
   )
 
