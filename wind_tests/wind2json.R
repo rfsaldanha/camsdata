@@ -2,6 +2,20 @@ rst_u <- terra::rast("forecast_data/cams_forecast_wind_u.nc")
 rst_v <- terra::rast("forecast_data/cams_forecast_wind_v.nc")
 
 wind2json <- function(rst_u, rst_v, depth, n_round = 2, path) {
+  # Verify compatibility between rst files
+  if (
+    !any(
+      terra::ncol(rst_u) == terra::ncol(rst_v),
+      terra::nrow(rst_u) == terra::nrow(rst_v),
+      terra::res(rst_u) == terra::res(rst_v),
+      terra::ext(rst_u) == terra::ext(rst_v)
+    )
+  ) {
+    stop(
+      "The rst_u and rst_v files must have the same dimensions and resolution (same number of columns, number of rows, spatial resolution and boundaries extend)."
+    )
+  }
+
   # Header variables
   nx <- terra::ncol(rst_u)
   ny <- terra::nrow(rst_u)
