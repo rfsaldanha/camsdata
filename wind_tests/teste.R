@@ -14,7 +14,7 @@ library(leaflet.extras2)
 # content <- "~/Downloads/leaflet-velocity-master/demo/wind-gbr.json"
 
 # content <- "forecast_data/wind.json"
-content <- "forecast_data/wind_teste.json"
+content <- "forecast_data/wind_teste2.json"
 
 opts <- velocityOptions(
   speedUnit = "m/s",
