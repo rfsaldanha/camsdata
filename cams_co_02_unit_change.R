@@ -75,7 +75,8 @@ gas_fun <- function(df_list, dest) {
     filename = path(
       dest,
       paste0("cams_co_mc_", format(ymd(date), "%Y%m%d"), ".nc")
-    )
+    ),
+    overwrite = TRUE
   )
 
   return(TRUE)
