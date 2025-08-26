@@ -82,7 +82,7 @@ gas_fun <- function(df_list, dest) {
 }
 
 # Execute
-plan(multisession, workers = 4)
+plan(multisession, workers = 6)
 res <- future_map(
   .x = df_list,
   .f = gas_fun,
