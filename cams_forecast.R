@@ -1320,6 +1320,26 @@ agg_prec <- function(rst, x, fun) {
 
   return(TRUE)
 }
+cli_alert_success("Done!")
+
+cli_alert("Computing wind vectors...")
+source("wind2json.R")
+
+rst_u <- terra::rast(path(dir_data, "cams_forecast_wind_u.nc"))
+rst_v <- terra::rast(path(dir_data, "cams_forecast_wind_v.nc"))
+
+for (i in 1:121) {
+  res <- wind2json(
+    rst_u = rst_u,
+    rst_v = rst_v,
+    depth = i,
+    n_round = 2,
+    ms2kmh = TRUE,
+    path = path(dir_data, paste0("wind_", i, ".json"))
+  )
+}
+
+cli_alert_success("Done!")
 
 # Compute zonal mean
 cli_alert("Computing zonal mean...")
