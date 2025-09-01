@@ -1,4 +1,4 @@
-wind2json <- function(rst_u, rst_v, depth, n_round = 2, ms2kmh = TRUE, path) {
+wind2json <- function(rst_u, rst_v, depth, n_round = 2, path) {
   # Verify compatibility between rst files
   if (
     !any(
@@ -28,13 +28,6 @@ wind2json <- function(rst_u, rst_v, depth, n_round = 2, ms2kmh = TRUE, path) {
   # Data
   data_u <- round(as.vector(t(terra::as.matrix(rst_u[[depth]]))), n_round)
   data_v <- round(as.vector(t(terra::as.matrix(rst_v[[depth]]))), n_round)
-
-  # Speed conversion
-  if (ms2kmh) {
-    data_u <- data_u * 3.6
-    data_v <- data_v * 3.6
-    parameterUnit <- "km.h-1"
-  }
 
   # List
   wind_list <- list(

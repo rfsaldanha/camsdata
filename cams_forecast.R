@@ -1334,7 +1334,7 @@ for (i in 1:121) {
     rst_v = rst_v,
     depth = i,
     n_round = 2,
-    ms2kmh = TRUE,
+    ms2kmh = FALSE,
     path = path(dir_data, paste0("wind_", i, ".json"))
   )
 }
