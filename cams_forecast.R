@@ -28,8 +28,8 @@ cli_alert("Setting environment...")
 bbox <- c(13.49, -83.15, -56.69, -32.20)
 
 # Download directory
-# dir_data <- "/dados/home/rfsaldanha/camsdata/forecast_data/"
-dir_data <- "forecast_data/"
+dir_data <- "/dados/home/rfsaldanha/camsdata/forecast_data/"
+# dir_data <- "forecast_data/"
 
 # Forecast range, in hours
 leadtime_hour <- as.character(0:120)
@@ -128,7 +128,7 @@ cli_alert("Reading geometries file...")
 # mun <- geobr::read_municipality(year = 2010, simplified = TRUE)
 # mun <- st_transform(x = mun, crs = 4326)
 # saveRDS(mun, "mun_epsg4326.rds")
-mun <- readRDS(path("mun_epsg4326.rds"))
+mun <- readRDS(path(dir_data, "mun_epsg4326.rds"))
 
 # Declare requests
 ## PM2.5
