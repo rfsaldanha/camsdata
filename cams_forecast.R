@@ -28,8 +28,12 @@ cli_alert("Setting environment...")
 bbox <- c(13.49, -83.15, -56.69, -32.20)
 
 # Download directory
-# dir_data <- "/dados/home/rfsaldanha/camsdata/forecast_data/"
-dir_data <- "forecast_data/"
+# dir_data <- path("/dados/home/rfsaldanha/camsdata/forecast_data/update_data/")
+# app_data <- path("/dados/home/rfsaldanha/camsdata/forecast_data/")
+# mun_geo <- path("/dados/home/rfsaldanha/camsdata/forecast_data/mun_epsg4326.rds")
+dir_data <- path("forecast_data/update_data/")
+app_data <- path("forecast_data/")
+mun_geo <- path("forecast_data/mun_epsg4326.rds")
 
 # Forecast range, in hours
 leadtime_hour <- as.character(0:120)
@@ -121,14 +125,14 @@ file_name_iqar <- glue(
 )
 
 # Remove old forecast files
-file_delete(list.files(path(dir_data), full.names = TRUE, pattern = "*.nc"))
+file_delete(list.files(dir_data, full.names = TRUE))
 
 # Municipalities
 cli_alert("Reading geometries file...")
 # mun <- geobr::read_municipality(year = 2010, simplified = TRUE)
 # mun <- st_transform(x = mun, crs = 4326)
 # saveRDS(mun, "mun_epsg4326.rds")
-mun <- readRDS(path(dir_data, "mun_epsg4326.rds"))
+mun <- readRDS(mun_geo)
 
 # Declare requests
 ## PM2.5
@@ -1475,6 +1479,9 @@ for (i in bdq_urls) {
 cli_alert("Saving results...")
 saveRDS(object = bdq_focos, file = path(dir_data, "bdq_focos.rds"))
 cli_alert_success("Done!")
+
+# Move updated files
+file_move(path = list.files(dir_data, full.names = TRUE), new_path = app_data)
 
 cli_alert_info("Job end: {now()}")
 cli_h1("END")
