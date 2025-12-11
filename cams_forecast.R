@@ -20,10 +20,20 @@ suppressMessages({
   library(exactextractr)
   library(DBI)
   library(duckdb)
+  library(ntfy)
 })
 cli_alert_success("Done!")
 
+# ntfy alert
+ntfy_topic <- "ocs_update_monitorarsaude"
+ntfy_send(
+  message = glue("Update job start. {now()}"),
+  tags = tags$robot,
+  topic = ntfy_topic
+)
+
 cli_alert("Setting environment...")
+
 # Bounding box
 bbox <- c(13.49, -83.15, -56.69, -32.20)
 
@@ -1482,6 +1492,13 @@ cli_alert_success("Done!")
 
 # Move updated files
 file_move(path = list.files(dir_data, full.names = TRUE), new_path = app_data)
+
+# Message
+ntfy_send(
+  message = glue("Update job end. {now()}"),
+  tags = tags$white_check_mark,
+  topic = ntfy_topic
+)
 
 cli_alert_info("Job end: {now()}")
 cli_h1("END")
