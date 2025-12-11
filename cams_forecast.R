@@ -38,12 +38,14 @@ cli_alert("Setting environment...")
 bbox <- c(13.49, -83.15, -56.69, -32.20)
 
 # Download directory
-# dir_data <- path("/dados/home/rfsaldanha/camsdata/forecast_data/update_data/")
-# app_data <- path("/dados/home/rfsaldanha/camsdata/forecast_data/")
-# mun_geo <- path("/dados/home/rfsaldanha/camsdata/forecast_data/mun_epsg4326.rds")
-dir_data <- path("forecast_data/update_data/")
-app_data <- path("forecast_data/")
-mun_geo <- path("forecast_data/mun_epsg4326.rds")
+dir_data <- path("/dados/home/rfsaldanha/camsdata/forecast_data/update_data/")
+app_data <- path("/dados/home/rfsaldanha/camsdata/forecast_data/")
+mun_geo <- path(
+  "/dados/home/rfsaldanha/camsdata/forecast_data/mun_epsg4326.rds"
+)
+# dir_data <- path("forecast_data/update_data/")
+# app_data <- path("forecast_data/")
+# mun_geo <- path("forecast_data/mun_epsg4326.rds")
 
 # Forecast range, in hours
 leadtime_hour <- as.character(0:120)
