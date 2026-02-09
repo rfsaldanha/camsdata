@@ -11,11 +11,11 @@ library(tools)
 library(furrr)
 
 # Folders
-original_unit_folder <- "/media/raphaelsaldanha/lacie/cams_so2/"
-new_unit_folder <- "/media/raphaelsaldanha/lacie/cams_so2_mc/"
+original_unit_folder <- "~/Downloads/cams/cams_so2/"
+new_unit_folder <- "~/Downloads/cams/cams_so2_mc/"
 
-temp_folder <- "/media/raphaelsaldanha/lacie/cams_temp/"
-sp_folder <- "/media/raphaelsaldanha/lacie/cams_sp/"
+temp_folder <- "~/Downloads/cams/cams_temp"
+sp_folder <- "~/Downloads/cams/cams_sp"
 
 # Files list
 gas_files <- list.files(

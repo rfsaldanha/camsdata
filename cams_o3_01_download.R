@@ -10,8 +10,10 @@ library(fs)
 wf_set_key(key = Sys.getenv("era5_API_Key"))
 
 # Parameters
-dir_data <- "/media/raphaelsaldanha/lacie/cams_o3"
-dates <- as.character(seq(ymd("2003-01-01"), ymd("2024-12-31"), by = "1 day"))
+# dir_data <- "/media/raphaelsaldanha/lacie/cams_o3"
+# dir_data <- "/dados2/data/cams/cams_o3"
+dir_data <- "~/Downloads/cams/cams_o3"
+dates <- as.character(seq(ymd("2025-01-01"), ymd("2025-08-31"), by = "1 day"))
 dates <- rev(dates)
 times <- c(
   "00:00",

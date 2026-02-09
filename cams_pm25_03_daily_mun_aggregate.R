@@ -25,7 +25,7 @@ if (dbExistsTable(con, "pm25_min_mean")) {
 dbListTables(con)
 
 # Folders
-daily_data_folder <- "/media/raphaelsaldanha/lacie/cams_pm25_daily_agg/"
+daily_data_folder <- "~/Downloads/cams/cams_pm25_daily_agg/"
 
 # List files
 files_min <- list.files(

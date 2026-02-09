@@ -25,7 +25,7 @@ if (dbExistsTable(con, "o3_min_mean")) {
 dbListTables(con)
 
 # Folders
-daily_data_folder <- "/media/raphaelsaldanha/lacie/cams_o3_daily_agg/"
+daily_data_folder <- "~/Downloads/cams/cams_o3_daily_agg/"
 
 # List files
 files_min <- list.files(
