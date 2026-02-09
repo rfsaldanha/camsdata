@@ -8,10 +8,16 @@ library(purrr)
 library(exactextractr)
 library(DBI)
 library(duckdb)
+library(cli)
+
+cli::cli_h1("CAMS PM 2.5 zonal statistics routine")
 
 # Database
+cli_alert_info("Database connection...")
 con <- dbConnect(duckdb(), "cams.duckdb")
+cli_alert_success("Done!")
 
+cli_alert_info("Checking tables...")
 if (dbExistsTable(con, "pm25_mean_mean")) {
   dbRemoveTable(con, "pm25_mean_mean")
 }
@@ -21,10 +27,12 @@ if (dbExistsTable(con, "pm25_max_mean")) {
 if (dbExistsTable(con, "pm25_min_mean")) {
   dbRemoveTable(con, "pm25_min_mean")
 }
+cli_alert_success("Done!")
 
 dbListTables(con)
 
 # Folders
+cli_alert_info("Listing files...")
 daily_data_folder <- "~/Downloads/cams/cams_pm25_daily_agg/"
 
 # List files
@@ -45,6 +53,7 @@ files_mean <- list.files(
   full.names = TRUE,
   pattern = "mean.nc$"
 )
+cli_alert_success("Done!")
 
 # Municipalities
 mun <- read_municipality(year = 2010, simplified = TRUE)
@@ -76,6 +85,7 @@ agg <- function(x, fun, tb_name) {
 }
 
 # Compute zonal mean
+cli_alert_info("Computing average mean...")
 res_mean <- map(
   .x = files_mean,
   .f = agg,
@@ -83,7 +93,9 @@ res_mean <- map(
   tb_name = "pm25_mean_mean",
   .progress = TRUE
 )
+cli_alert_success("Done!")
 
+cli_alert_info("Computing average max...")
 res_max <- map(
   .x = files_max,
   .f = agg,
@@ -91,7 +103,9 @@ res_max <- map(
   tb_name = "pm25_max_mean",
   .progress = TRUE
 )
+cli_alert_success("Done!")
 
+cli_alert_info("Computing average min...")
 res_min <- map(
   .x = files_min,
   .f = agg,
@@ -99,8 +113,10 @@ res_min <- map(
   tb_name = "pm25_min_mean",
   .progress = TRUE
 )
+cli_alert_success("Done!")
 
 # Export parquet file
+cli_alert_info("Exporting files...")
 dbExecute(
   con,
   "COPY (SELECT * FROM 'pm25_mean_mean') TO 'pm25_mean_mean.parquet' (FORMAT 'PARQUET')"
@@ -131,6 +147,11 @@ dbExecute(
   con,
   "COPY (SELECT * FROM 'pm25_min_mean') TO 'pm25_min_mean.csv' (FORMAT 'CSV')"
 )
+cli_alert_success("Done!")
 
 # Database disconnect
+cli_alert_info("Database disconnect...")
 dbDisconnect(conn = con)
+cli_alert_success("Done!")
+
+cli_h1("END")
