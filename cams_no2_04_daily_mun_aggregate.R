@@ -63,10 +63,10 @@ agg <- function(x, fun, tb_name) {
   res <- tibble(
     code_muni = mun$code_muni,
     date = as.Date(
-      x = str_sub(string = basename(x), start = 11, end = 19),
+      x = str_sub(string = basename(x), start = 13, end = 20),
       format = "%Y%m%d"
     ),
-    value = round(x = tmp * 1000000, digits = 2), # kg/kg-1 to mg/kg-1 or ppm
+    value = round(x = tmp, digits = 2),
   )
 
   # Write to database

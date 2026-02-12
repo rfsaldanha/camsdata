@@ -66,7 +66,7 @@ agg <- function(x, fun, tb_name) {
       x = str_sub(string = basename(x), start = 11, end = 19),
       format = "%Y%m%d"
     ),
-    value = round(x = tmp * 1000000000, digits = 2), # kg/m3 to μg/m3
+    value = round(x = tmp, digits = 2), # kg/m3 to μg/m3
   )
 
   # Write to database
