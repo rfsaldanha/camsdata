@@ -10,7 +10,7 @@ library(DBI)
 library(duckdb)
 
 # Database
-con <- dbConnect(duckdb(), "cams.duckdb")
+con <- dbConnect(duckdb(), "cams_co.duckdb")
 
 if (dbExistsTable(con, "co_mean_mean")) {
   dbRemoveTable(con, "co_mean_mean")
@@ -25,7 +25,8 @@ if (dbExistsTable(con, "co_min_mean")) {
 dbListTables(con)
 
 # Folders
-daily_data_folder <- "~/Downloads/cams/cams_co_daily_agg/"
+#daily_data_folder <- "~/Downloads/cams/cams_co_daily_agg/"
+daily_data_folder <- "data/cams_co_daily_agg/"
 
 # List files
 files_min <- list.files(
@@ -63,7 +64,7 @@ agg <- function(x, fun, tb_name) {
   res <- tibble(
     code_muni = mun$code_muni,
     date = as.Date(
-      x = str_sub(string = basename(x), start = 11, end = 19),
+      x = str_sub(string = basename(x), start = 12, end = 19),
       format = "%Y%m%d"
     ),
     value = round(x = tmp, digits = 2), # kg/m3 to μg/m3

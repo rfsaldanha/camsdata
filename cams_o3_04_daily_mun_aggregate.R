@@ -10,7 +10,7 @@ library(DBI)
 library(duckdb)
 
 # Database
-con <- dbConnect(duckdb(), "cams.duckdb")
+con <- dbConnect(duckdb(), "cams_o3.duckdb")
 
 if (dbExistsTable(con, "o3_mean_mean")) {
   dbRemoveTable(con, "o3_mean_mean")

@@ -537,6 +537,50 @@ retry(
 )
 cli_alert_success("Done!")
 
+cli_h2(
+  "Ensure that all model level datasets share the same extends and of others and corrent depth"
+)
+
+pm25 <- rast(x = path(dir_data, file_name_pm25))
+o3 <- rast(x = path(dir_data, file_name_o3))
+co <- rast(x = path(dir_data, file_name_co))
+no2 <- rast(x = path(dir_data, file_name_no2))
+so2 <- rast(x = path(dir_data, file_name_so2))
+
+ext(o3) <- ext(pm25)
+depth(o3) <- 1:41
+ext(co) <- ext(pm25)
+depth(co) <- 1:41
+ext(no2) <- ext(pm25)
+depth(no2) <- 1:41
+ext(so2) <- ext(pm25)
+depth(so2) <- 1:41
+
+writeCDF(
+  x = o3,
+  filename = path(dir_data, file_name_o3),
+  overwrite = TRUE
+)
+
+writeCDF(
+  x = co,
+  filename = path(dir_data, file_name_co),
+  overwrite = TRUE
+)
+
+writeCDF(
+  x = no2,
+  filename = path(dir_data, file_name_no2),
+  overwrite = TRUE
+)
+
+writeCDF(
+  x = so2,
+  filename = path(dir_data, file_name_so2),
+  overwrite = TRUE
+)
+cli_alert_success("Done!")
+
 cli_h2("Compute gas indicators to different units")
 # https://forum.ecmwf.int/t/convert-mass-mixing-ratio-mmr-to-mass-concentration-or-to-volume-mixing-ratio-vmr/1253
 # https://teesing.com/en/tools/ppm-mg3-converter
