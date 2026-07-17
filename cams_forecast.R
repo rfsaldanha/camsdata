@@ -583,7 +583,6 @@ cli_alert_success("Done!")
 
 cli_h2("Compute gas indicators to different units")
 # https://forum.ecmwf.int/t/convert-mass-mixing-ratio-mmr-to-mass-concentration-or-to-volume-mixing-ratio-vmr/1253
-# https://teesing.com/en/tools/ppm-mg3-converter
 
 sp <- rast(x = path(dir_data, file_name_sp))
 temp <- rast(x = path(dir_data, file_name_temp))
@@ -592,40 +591,58 @@ co <- rast(x = path(dir_data, file_name_co))
 no2 <- rast(x = path(dir_data, file_name_no2))
 so2 <- rast(x = path(dir_data, file_name_so2))
 
+# Match the hourly meteorological fields to the 3-hourly gas fields
+met_layers <- seq(1, 121, 3)
+dry_air_gas_constant <- 287.058 # J/(kg K)
+air_density <- sp[[met_layers]] /
+  (dry_air_gas_constant * temp[[met_layers]]) # kg/m3
+
 cli_alert("O3 (kg/kg to kg/m3)")
-o3_mc <- o3 * (sp[[seq(1, 121, 3)]] / (260.2 * temp[[seq(1, 121, 3)]]))
+o3_mc <- o3 * air_density
 writeCDF(
   x = o3_mc,
   filename = path(dir_data, file_name_o3_mc),
+  varname = "o3",
+  longname = "Ozone mass concentration",
+  unit = "kg m-3",
   overwrite = TRUE
 )
 cli_alert_success("Done!")
 
 cli_alert("CO (kg/kg to PPM)")
-co_mc <- co * (sp[[seq(1, 121, 3)]] / (296.84 * temp[[seq(1, 121, 3)]])) # kg/kg to kg/m3
-co_mc <- co_mc * 1e6 # kg/m3 to mg/m3
-co_mc <- 24.45 * co_mc / 28.01 # mg/m3 to PPM
+dry_air_molar_mass <- 28.96546 # g/mol
+co_molar_mass <- 28.0101 # g/mol
+co_mc <- co * (dry_air_molar_mass / co_molar_mass) * 1e6
 writeCDF(
   x = co_mc,
   filename = path(dir_data, file_name_co_mc),
+  varname = "co",
+  longname = "Carbon monoxide volume mixing ratio",
+  unit = "ppm",
   overwrite = TRUE
 )
 cli_alert_success("Done!")
 
 cli_alert("NO2 (kg/kg to kg/m3)")
-no2_mc <- no2 * (sp[[seq(1, 121, 3)]] / (180.73 * temp[[seq(1, 121, 3)]]))
+no2_mc <- no2 * air_density
 writeCDF(
   x = no2_mc,
   filename = path(dir_data, file_name_no2_mc),
+  varname = "no2",
+  longname = "Nitrogen dioxide mass concentration",
+  unit = "kg m-3",
   overwrite = TRUE
 )
 cli_alert_success("Done!")
 
 cli_alert("SO2 (kg/kg to kg/m3)")
-so2_mc <- so2 * (sp[[seq(1, 121, 3)]] / (129.78 * temp[[seq(1, 121, 3)]]))
+so2_mc <- so2 * air_density
 writeCDF(
   x = so2_mc,
   filename = path(dir_data, file_name_so2_mc),
+  varname = "so2",
+  longname = "Sulfur dioxide mass concentration",
+  unit = "kg m-3",
   overwrite = TRUE
 )
 cli_alert_success("Done!")
