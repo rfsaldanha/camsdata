@@ -545,25 +545,31 @@ co <- rast(x = path(dir_data, file_name_co))
 no2 <- rast(x = path(dir_data, file_name_no2))
 so2 <- rast(x = path(dir_data, file_name_so2))
 
-if (
-  !compareGeom(
-    pm25,
-    o3,
-    co,
-    no2,
-    so2,
-    lyrs = FALSE,
-    crs = TRUE,
-    ext = TRUE,
-    rowcol = TRUE,
-    res = TRUE,
-    stopOnError = FALSE
+gas_rasters <- list(O3 = o3, CO = co, NO2 = no2, SO2 = so2)
+gas_geometry_matches <- vapply(
+  gas_rasters,
+  function(x) {
+    compareGeom(
+      pm25,
+      x,
+      lyrs = FALSE,
+      crs = TRUE,
+      ext = TRUE,
+      rowcol = TRUE,
+      res = TRUE,
+      stopOnError = FALSE
+    )
+  },
+  logical(1)
+)
+
+if (any(!gas_geometry_matches)) {
+  cli_alert_warning(
+    "Geometry differs for {paste(names(gas_geometry_matches)[!gas_geometry_matches], collapse = ', ')}; these rasters will be aligned before conversion."
   )
-) {
-  cli_abort("Pollutant rasters do not share the same geometry.")
 }
 
-gas_layer_counts <- vapply(list(o3, co, no2, so2), nlyr, numeric(1))
+gas_layer_counts <- vapply(gas_rasters, nlyr, numeric(1))
 if (nlyr(pm25) != 121 || any(gas_layer_counts != 41)) {
   cli_abort("Unexpected number of pollutant forecast layers.")
 }
@@ -584,6 +590,34 @@ met_layers <- seq(1, 121, 3)
 dry_air_gas_constant <- 287.058 # J/(kg K)
 air_density <- sp[[met_layers]] /
   (dry_air_gas_constant * temp[[met_layers]]) # kg/m3
+
+# Align model-level fields to the surface-field grid in memory. This avoids
+# differences in NetCDF geometry interpretation across terra/GDAL versions
+# without overwriting the downloaded source files.
+align_to_surface_grid <- function(x, reference, pollutant) {
+  geometry_matches <- compareGeom(
+    x,
+    reference,
+    lyrs = FALSE,
+    crs = TRUE,
+    ext = TRUE,
+    rowcol = TRUE,
+    res = TRUE,
+    stopOnError = FALSE
+  )
+
+  if (!geometry_matches) {
+    cli_alert_warning("Aligning {pollutant} to the surface-field grid.")
+    x <- resample(x, reference, method = "bilinear")
+  }
+
+  x
+}
+
+o3 <- align_to_surface_grid(o3, air_density, "O3")
+co <- align_to_surface_grid(co, air_density, "CO")
+no2 <- align_to_surface_grid(no2, air_density, "NO2")
+so2 <- align_to_surface_grid(so2, air_density, "SO2")
 
 # Use forecast periods as the layer dimension in converted gas files
 gas_forecast_period <- depth(air_density)
