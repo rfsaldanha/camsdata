@@ -14,24 +14,13 @@ library(furrr)
 original_unit_folder <- "~/Downloads/cams/cams_co/"
 new_unit_folder <- "~/Downloads/cams/cams_co_mc/"
 
-temp_folder <- "~/Downloads/cams/cams_temp"
-sp_folder <- "~/Downloads/cams/cams_sp"
+dir_create(new_unit_folder)
 
 # Files list
 gas_files <- list.files(
   original_unit_folder,
   full.names = TRUE,
-  pattern = "*.nc"
-)
-temp_files <- list.files(
-  temp_folder,
-  full.names = TRUE,
-  pattern = "*.nc"
-)
-sp_files <- list.files(
-  sp_folder,
-  full.names = TRUE,
-  pattern = "*.nc"
+  pattern = "\\.nc$"
 )
 
 # Files table
@@ -39,18 +28,9 @@ gas_df <- tibble(
   gas_path = gas_files,
   date = ymd(str_sub(gas_files, -11, -4))
 )
-temp_df <- tibble(
-  temp_path = temp_files,
-  date = ymd(str_sub(temp_files, -11, -4))
-)
-sp_df <- tibble(
-  sp_path = sp_files,
-  date = ymd(str_sub(sp_files, -11, -4))
-)
 
-# Join data frames
-df <- inner_join(gas_df, temp_df) |>
-  inner_join(sp_df) |>
+# Arrange files
+df <- gas_df |>
   arrange(date) |>
   relocate(date)
 
@@ -63,11 +43,11 @@ gas_fun <- function(df_list, dest) {
   # Read files
   date <- df_list[1]
   gas <- rast(df_list[2])
-  temp <- rast(df_list[3])
-  sp <- rast(df_list[4])
 
-  # Unit conversion
-  gas_mc <- 24.45 * ((gas * (sp / (296.84 * temp)) * 1e6)) / 28.01
+  # Convert mass mixing ratio (kg/kg) to volume mixing ratio (ppm)
+  dry_air_molar_mass <- 28.96546 # g/mol
+  co_molar_mass <- 28.0101 # g/mol
+  gas_mc <- gas * (dry_air_molar_mass / co_molar_mass) * 1e6
 
   # Save
   writeCDF(
@@ -76,6 +56,9 @@ gas_fun <- function(df_list, dest) {
       dest,
       paste0("cams_co_mc_", format(ymd(date), "%Y%m%d"), ".nc")
     ),
+    varname = "co",
+    longname = "Carbon monoxide volume mixing ratio",
+    unit = "ppm",
     overwrite = TRUE
   )
 

@@ -17,21 +17,23 @@ new_unit_folder <- "~/Downloads/cams/cams_o3_mc/"
 temp_folder <- "~/Downloads/cams/cams_temp"
 sp_folder <- "~/Downloads/cams/cams_sp"
 
+dir_create(new_unit_folder)
+
 # Files list
 gas_files <- list.files(
   original_unit_folder,
   full.names = TRUE,
-  pattern = "*.nc"
+  pattern = "\\.nc$"
 )
 temp_files <- list.files(
   temp_folder,
   full.names = TRUE,
-  pattern = "*.nc"
+  pattern = "\\.nc$"
 )
 sp_files <- list.files(
   sp_folder,
   full.names = TRUE,
-  pattern = "*.nc"
+  pattern = "\\.nc$"
 )
 
 # Files table
@@ -66,16 +68,21 @@ gas_fun <- function(df_list, dest) {
   temp <- rast(df_list[3])
   sp <- rast(df_list[4])
 
-  # Unit conversion
-  gas_mc <- gas * (sp / (260.2 * temp)) * 1e9
+  # Convert mass mixing ratio (kg/kg) to mass concentration (ug/m3)
+  dry_air_gas_constant <- 287.058 # J/(kg K)
+  gas_mc <- gas * (sp / (dry_air_gas_constant * temp)) * 1e9
 
   # Save
   writeCDF(
     x = gas_mc,
     filename = path(
       dest,
-      paste0("cams_03_mc_", format(ymd(date), "%Y%m%d"), ".nc")
-    )
+      paste0("cams_o3_mc_", format(ymd(date), "%Y%m%d"), ".nc")
+    ),
+    varname = "o3",
+    longname = "Ozone mass concentration",
+    unit = "ug m-3",
+    overwrite = TRUE
   )
 
   return(TRUE)
