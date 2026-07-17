@@ -38,14 +38,14 @@ cli_alert("Setting environment...")
 bbox <- c(13.49, -83.15, -56.69, -32.20)
 
 # Download directory
-dir_data <- path("/dados/home/rfsaldanha/camsdata/forecast_data/update_data/")
-app_data <- path("/dados/home/rfsaldanha/camsdata/forecast_data/")
-mun_geo <- path(
-  "/dados/home/rfsaldanha/camsdata/forecast_data/mun_epsg4326.rds"
-)
-# dir_data <- path("forecast_data/update_data/")
-# app_data <- path("forecast_data/")
-# mun_geo <- path("forecast_data/mun_epsg4326.rds")
+# dir_data <- path("/dados/home/rfsaldanha/camsdata/forecast_data/update_data/")
+# app_data <- path("/dados/home/rfsaldanha/camsdata/forecast_data/")
+# mun_geo <- path(
+#   "/dados/home/rfsaldanha/camsdata/forecast_data/mun_epsg4326.rds"
+# )
+dir_data <- path("forecast_data/update_data/")
+app_data <- path("forecast_data/")
+mun_geo <- path("forecast_data/mun_epsg4326.rds")
 
 # Forecast range, in hours
 leadtime_hour <- as.character(0:120)
@@ -537,9 +537,7 @@ retry(
 )
 cli_alert_success("Done!")
 
-cli_h2(
-  "Ensure that all model level datasets share the same extends and of others and corrent depth"
-)
+cli_h2("Validate pollutant raster geometry and layer counts")
 
 pm25 <- rast(x = path(dir_data, file_name_pm25))
 o3 <- rast(x = path(dir_data, file_name_o3))
@@ -547,38 +545,28 @@ co <- rast(x = path(dir_data, file_name_co))
 no2 <- rast(x = path(dir_data, file_name_no2))
 so2 <- rast(x = path(dir_data, file_name_so2))
 
-ext(o3) <- ext(pm25)
-depth(o3) <- 1:41
-ext(co) <- ext(pm25)
-depth(co) <- 1:41
-ext(no2) <- ext(pm25)
-depth(no2) <- 1:41
-ext(so2) <- ext(pm25)
-depth(so2) <- 1:41
+if (
+  !compareGeom(
+    pm25,
+    o3,
+    co,
+    no2,
+    so2,
+    lyrs = FALSE,
+    crs = TRUE,
+    ext = TRUE,
+    rowcol = TRUE,
+    res = TRUE,
+    stopOnError = FALSE
+  )
+) {
+  cli_abort("Pollutant rasters do not share the same geometry.")
+}
 
-writeCDF(
-  x = o3,
-  filename = path(dir_data, file_name_o3),
-  overwrite = TRUE
-)
-
-writeCDF(
-  x = co,
-  filename = path(dir_data, file_name_co),
-  overwrite = TRUE
-)
-
-writeCDF(
-  x = no2,
-  filename = path(dir_data, file_name_no2),
-  overwrite = TRUE
-)
-
-writeCDF(
-  x = so2,
-  filename = path(dir_data, file_name_so2),
-  overwrite = TRUE
-)
+gas_layer_counts <- vapply(list(o3, co, no2, so2), nlyr, numeric(1))
+if (nlyr(pm25) != 121 || any(gas_layer_counts != 41)) {
+  cli_abort("Unexpected number of pollutant forecast layers.")
+}
 cli_alert_success("Done!")
 
 cli_h2("Compute gas indicators to different units")
@@ -596,6 +584,17 @@ met_layers <- seq(1, 121, 3)
 dry_air_gas_constant <- 287.058 # J/(kg K)
 air_density <- sp[[met_layers]] /
   (dry_air_gas_constant * temp[[met_layers]]) # kg/m3
+
+# Use forecast periods as the layer dimension in converted gas files
+gas_forecast_period <- depth(air_density)
+depth(o3) <- gas_forecast_period
+depth(co) <- gas_forecast_period
+depth(no2) <- gas_forecast_period
+depth(so2) <- gas_forecast_period
+depthName(o3) <- "forecast_period"
+depthName(co) <- "forecast_period"
+depthName(no2) <- "forecast_period"
+depthName(so2) <- "forecast_period"
 
 cli_alert("O3 (kg/kg to kg/m3)")
 o3_mc <- o3 * air_density
