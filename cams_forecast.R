@@ -74,15 +74,24 @@ parallel_cores <- 4
 # https://confluence.ecmwf.int/display/CKB/CAMS%3A+Global+atmospheric+composition+forecast+data+documentation#heading-DataavailabilityHHMM
 # 00 UTC forecast data availability guaranteed by 10:00 UTC -> update at ~7am BR
 # 12 UTC forecast data availability guaranteed by 22:00 UTC -> update at ~7pm BR
-reference_now <- now(tzone = "UTC")
-reference_date <- as_date(reference_now, tz = "UTC")
-if (hour(reference_now) >= 22L || hour(reference_now) <= 10L) {
-  date <- reference_date - 1
-  time <- "12:00"
-} else {
-  date <- reference_date
-  time <- "00:00"
+select_cams_cycle <- function(reference_now = now(tzone = "UTC")) {
+  reference_now <- with_tz(reference_now, "UTC")
+  reference_date <- as_date(reference_now, tz = "UTC")
+  day_start <- as_datetime(reference_date, tz = "UTC")
+
+  if (reference_now < day_start + hours(10)) {
+    return(list(date = reference_date - 1, time = "12:00"))
+  }
+  if (reference_now < day_start + hours(22)) {
+    return(list(date = reference_date, time = "00:00"))
+  }
+  list(date = reference_date, time = "12:00")
 }
+
+reference_now <- now(tzone = "UTC")
+forecast_cycle <- select_cams_cycle(reference_now)
+date <- forecast_cycle$date
+time <- forecast_cycle$time
 
 cli_alert_info("Update reference: {date} {time}")
 
