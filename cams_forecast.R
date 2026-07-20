@@ -813,6 +813,13 @@ tb_name_wind_speed <- "wind_speed_mun_forecast"
 tb_name_aerosol <- "aerosol_mun_forecast"
 tb_name_prec <- "prec_mun_forecast"
 
+forecast_start <- as_datetime(
+  paste(date, time), format = "%Y-%m-%d %H:%M", tz = "UTC"
+)
+forecast_sequence <- function(step_hours) {
+  forecast_start + hours(seq.int(0L, 120L, by = step_hours))
+}
+
 cli_h3("IQAr")
 
 # Read CAMS file
@@ -827,11 +834,7 @@ agg_iqar <- function(rst, x, fun) {
   tmp <- exact_extract(x = rst[[x]], y = mun, fun = fun, progress = FALSE)
 
   # Date and time
-  seq_dates <- seq(
-    from = as_datetime(paste(date, time), format = "%Y-%m-%d %H:%M"),
-    to = as_datetime(date + duration(120, "hours")),
-    by = "3 hours"
-  )
+  seq_dates <- forecast_sequence(3L)
 
   # Table output with unit conversion and rounding
   res <- tibble(
@@ -879,11 +882,7 @@ agg_pm25 <- function(rst, x, fun) {
   tmp <- exact_extract(x = rst[[x]], y = mun, fun = fun, progress = FALSE)
 
   # Date and time
-  seq_dates <- seq(
-    from = as_datetime(paste(date, time), format = "%Y-%m-%d %H:%M"),
-    to = as_datetime(date + duration(120, "hours")),
-    by = "1 hours"
-  )
+  seq_dates <- forecast_sequence(1L)
 
   # Table output with unit conversion and rounding
   res <- tibble(
@@ -931,11 +930,7 @@ agg_pm10 <- function(rst, x, fun) {
   tmp <- exact_extract(x = rst[[x]], y = mun, fun = fun, progress = FALSE)
 
   # Date and time
-  seq_dates <- seq(
-    from = as_datetime(paste(date, time), format = "%Y-%m-%d %H:%M"),
-    to = as_datetime(date + duration(120, "hours")),
-    by = "1 hours"
-  )
+  seq_dates <- forecast_sequence(1L)
 
   # Table output with unit conversion and rounding
   res <- tibble(
@@ -983,11 +978,7 @@ agg_o3 <- function(rst, x, fun) {
   tmp <- exact_extract(x = rst[[x]], y = mun, fun = fun, progress = FALSE)
 
   # Date and time
-  seq_dates <- seq(
-    from = as_datetime(paste(date, time), format = "%Y-%m-%d %H:%M"),
-    to = as_datetime(date + duration(120, "hours")),
-    by = "3 hours"
-  )
+  seq_dates <- forecast_sequence(3L)
 
   # Table output with unit conversion and rounding
   res <- tibble(
@@ -1036,11 +1027,7 @@ agg_co <- function(rst, x, fun) {
   tmp <- exact_extract(x = rst[[x]], y = mun, fun = fun, progress = FALSE)
 
   # Date and time
-  seq_dates <- seq(
-    from = as_datetime(paste(date, time), format = "%Y-%m-%d %H:%M"),
-    to = as_datetime(date + duration(120, "hours")),
-    by = "3 hours"
-  )
+  seq_dates <- forecast_sequence(3L)
 
   # Table output with unit conversion and rounding
   res <- tibble(
@@ -1089,11 +1076,7 @@ agg_no2 <- function(rst, x, fun) {
   tmp <- exact_extract(x = rst[[x]], y = mun, fun = fun, progress = FALSE)
 
   # Date and time
-  seq_dates <- seq(
-    from = as_datetime(paste(date, time), format = "%Y-%m-%d %H:%M"),
-    to = as_datetime(date + duration(120, "hours")),
-    by = "3 hours"
-  )
+  seq_dates <- forecast_sequence(3L)
 
   # Table output with unit conversion and rounding
   res <- tibble(
@@ -1142,11 +1125,7 @@ agg_so2 <- function(rst, x, fun) {
   tmp <- exact_extract(x = rst[[x]], y = mun, fun = fun, progress = FALSE)
 
   # Date and time
-  seq_dates <- seq(
-    from = as_datetime(paste(date, time), format = "%Y-%m-%d %H:%M"),
-    to = as_datetime(date + duration(120, "hours")),
-    by = "3 hours"
-  )
+  seq_dates <- forecast_sequence(3L)
 
   # Table output with unit conversion and rounding
   res <- tibble(
@@ -1195,11 +1174,7 @@ agg_temp <- function(rst, x, fun) {
   tmp <- exact_extract(x = rst[[x]], y = mun, fun = fun, progress = FALSE)
 
   # Date and time
-  seq_dates <- seq(
-    from = as_datetime(paste(date, time), format = "%Y-%m-%d %H:%M"),
-    to = as_datetime(date + duration(120, "hours")),
-    by = "1 hours"
-  )
+  seq_dates <- forecast_sequence(1L)
 
   # Table output with unit conversion and rounding
   res <- tibble(
@@ -1247,11 +1222,7 @@ agg_uv <- function(rst, x, fun) {
   tmp <- exact_extract(x = rst[[x]], y = mun, fun = fun, progress = FALSE)
 
   # Date and time
-  seq_dates <- seq(
-    from = as_datetime(paste(date, time), format = "%Y-%m-%d %H:%M"),
-    to = as_datetime(date + duration(120, "hours")),
-    by = "1 hours"
-  )
+  seq_dates <- forecast_sequence(1L)
 
   # Table output with unit conversion and rounding
   res <- tibble(
@@ -1299,11 +1270,7 @@ agg_wind_speed <- function(rst, x, fun) {
   tmp <- exact_extract(x = rst[[x]], y = mun, fun = fun, progress = FALSE)
 
   # Date and time
-  seq_dates <- seq(
-    from = as_datetime(paste(date, time), format = "%Y-%m-%d %H:%M"),
-    to = as_datetime(date + duration(120, "hours")),
-    by = "1 hours"
-  )
+  seq_dates <- forecast_sequence(1L)
 
   # Table output with unit conversion and rounding
   res <- tibble(
@@ -1356,11 +1323,7 @@ agg_aerosol <- function(rst, x, fun) {
   tmp <- exact_extract(x = rst[[x]], y = mun, fun = fun, progress = FALSE)
 
   # Date and time
-  seq_dates <- seq(
-    from = as_datetime(paste(date, time), format = "%Y-%m-%d %H:%M"),
-    to = as_datetime(date + duration(120, "hours")),
-    by = "1 hours"
-  )
+  seq_dates <- forecast_sequence(1L)
 
   # Table output with unit conversion and rounding
   res <- tibble(
@@ -1413,11 +1376,7 @@ agg_prec <- function(rst, x, fun) {
   tmp <- exact_extract(x = rst[[x]], y = mun, fun = fun, progress = FALSE)
 
   # Date and time
-  seq_dates <- seq(
-    from = as_datetime(paste(date, time), format = "%Y-%m-%d %H:%M"),
-    to = as_datetime(date + duration(120, "hours")),
-    by = "1 hours"
-  )
+  seq_dates <- forecast_sequence(1L)
 
   # Table output with unit conversion and rounding
   res <- tibble(
