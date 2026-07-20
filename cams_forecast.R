@@ -37,15 +37,27 @@ cli_alert("Setting environment...")
 # Bounding box
 bbox <- c(13.49, -83.15, -56.69, -32.20)
 
-# Download directory
-dir_data <- path("/dados/home/rfsaldanha/camsdata/forecast_data/update_data/")
-app_data <- path("/dados/home/rfsaldanha/camsdata/forecast_data/")
-mun_geo <- path(
-  "/dados/home/rfsaldanha/camsdata/forecast_data/mun_epsg4326.rds"
-)
-# dir_data <- path("forecast_data/update_data/")
-# app_data <- path("forecast_data/")
-# mun_geo <- path("forecast_data/mun_epsg4326.rds")
+# Forecast output directory. CAMS_FORECAST_DATA_DIR can point to a shared
+# production directory; otherwise retain the historical server path when it
+# exists and use this repository's forecast_data directory during development.
+script_argument <- grep("^--file=", commandArgs(trailingOnly = FALSE), value = TRUE)
+script_dir <- if (length(script_argument)) {
+  path_dir(path_abs(sub("^--file=", "", script_argument[[1]])))
+} else {
+  path_abs(".")
+}
+configured_data_dir <- Sys.getenv("CAMS_FORECAST_DATA_DIR", unset = "")
+production_data_dir <- "/dados/home/rfsaldanha/camsdata/forecast_data"
+default_data_dir <- if (dir_exists(production_data_dir)) {
+  production_data_dir
+} else {
+  path(script_dir, "forecast_data")
+}
+app_data <- path_abs(if (nzchar(configured_data_dir)) configured_data_dir else default_data_dir)
+dir_data <- path(app_data, "update_data")
+mun_geo <- path(app_data, "mun_epsg4326.rds")
+dir_create(c(app_data, dir_data), recurse = TRUE)
+if (!file_exists(mun_geo)) stop("Municipality geometry file not found: ", mun_geo)
 
 # Forecast range, in hours
 leadtime_hour <- as.character(0:120)
@@ -62,16 +74,13 @@ parallel_cores <- 4
 # https://confluence.ecmwf.int/display/CKB/CAMS%3A+Global+atmospheric+composition+forecast+data+documentation#heading-DataavailabilityHHMM
 # 00 UTC forecast data availability guaranteed by 10:00 UTC -> update at ~7am BR
 # 12 UTC forecast data availability guaranteed by 22:00 UTC -> update at ~7pm BR
-if (
-  now(tzone = "UTC") >=
-    as_datetime(today(tzone = "UTC") + duration("22 hours")) |
-    now(tzone = "UTC") <=
-      as_datetime(today(tzone = "UTC") + duration("10 hours"))
-) {
-  date <- today() - 1
+reference_now <- now(tzone = "UTC")
+reference_date <- as_date(reference_now, tz = "UTC")
+if (hour(reference_now) >= 22L || hour(reference_now) <= 10L) {
+  date <- reference_date - 1
   time <- "12:00"
 } else {
-  date <- today()
+  date <- reference_date
   time <- "00:00"
 }
 
@@ -1568,9 +1577,9 @@ cli_alert("Fetching data...")
 bdq_focos <- data.frame()
 for (i in bdq_urls) {
   # Try and retry download
-  bdq_focos <- retry(
+  tmp <- retry(
     expr = {
-      tmp <- read_csv(file = i) |>
+      read_csv(file = i, show_col_types = FALSE) |>
         filter(satelite %in% c("AQUA_M-M", "AQUA_M-T")) |>
         select(id, lat, lon, data_hora_gmt)
     },
@@ -1582,6 +1591,12 @@ for (i in bdq_urls) {
   bdq_focos <- bind_rows(bdq_focos, tmp)
   rm(tmp)
 }
+bdq_focos <- bdq_focos |>
+  filter(is.finite(lat), is.finite(lon), between(lat, -90, 90), between(lon, -180, 180)) |>
+  distinct(id, .keep_all = TRUE) |>
+  arrange(data_hora_gmt)
+if (!nrow(bdq_focos)) stop("BDQueimadas returned no valid active-fire records.")
+cli_alert_info("{nrow(bdq_focos)} unique active-fire records downloaded.")
 cli_alert("Saving results...")
 saveRDS(object = bdq_focos, file = path(dir_data, "bdq_focos.rds"))
 cli_alert_success("Done!")
