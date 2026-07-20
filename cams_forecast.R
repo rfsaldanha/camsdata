@@ -1,3 +1,15 @@
+# Validate the complete file before starting any costly downloads. Rscript can
+# evaluate top-level expressions incrementally, which otherwise lets a syntax
+# error near the end appear only after hours of processing.
+script_argument <- grep("^--file=", commandArgs(trailingOnly = FALSE), value = TRUE)
+if (length(script_argument)) {
+  script_file <- normalizePath(
+    sub("^--file=", "", script_argument[[1]]),
+    mustWork = TRUE
+  )
+  invisible(parse(file = script_file))
+}
+
 # Packages
 cli::cli_h1("CAMS forecast data download routine")
 cli::cli_alert_info("Job start: {lubridate::now()}")
@@ -40,7 +52,6 @@ bbox <- c(13.49, -83.15, -56.69, -32.20)
 # Forecast output directory. CAMS_FORECAST_DATA_DIR can point to a shared
 # production directory; otherwise retain the historical server path when it
 # exists and use this repository's forecast_data directory during development.
-script_argument <- grep("^--file=", commandArgs(trailingOnly = FALSE), value = TRUE)
 script_dir <- if (length(script_argument)) {
   path_dir(path_abs(sub("^--file=", "", script_argument[[1]])))
 } else {
@@ -1407,8 +1418,24 @@ agg_prec <- function(rst, x, fun) {
 
   return(TRUE)
 }
+
+# Compute zonal mean
+cli_alert("Computing zonal mean...")
+res_mean_prec <- map(
+  .x = 1:121,
+  .f = agg_prec,
+  rst = rst_prec,
+  fun = "mean",
+  .progress = TRUE
+)
 cli_alert_success("Done!")
 
+# Check data
+cli_alert("Checking data...")
+tbl(con, tb_name_prec) |> tally()
+tbl(con, tb_name_prec) |> head()
+
+cli_h3("Wind vectors")
 cli_alert("Computing wind vectors...")
 
 wind2json <- function(rst_u, rst_v, depth, n_round = 2, path) {
@@ -1509,22 +1536,6 @@ for (i in 1:121) {
 }
 
 cli_alert_success("Done!")
-
-# Compute zonal mean
-cli_alert("Computing zonal mean...")
-res_mean_prec <- map(
-  .x = 1:121,
-  .f = agg_prec,
-  rst = rst_prec,
-  fun = "mean",
-  .progress = TRUE
-)
-cli_alert_success("Done!")
-
-# Check data
-cli_alert("Checking data...")
-tbl(con, tb_name_prec) |> tally()
-tbl(con, tb_name_prec) |> head()
 
 # Database disconnect
 cli_alert("Disconnecting database...")
