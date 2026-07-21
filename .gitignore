@@ -62,3 +62,4 @@ datestamp_*
 # Generated forecast application files
 /forecast_data/**/*.json
 /forecast_data/**/bdq_focos.rds
+/forecast_data/.cams_generation

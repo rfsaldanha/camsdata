@@ -81,6 +81,53 @@ retry_times <- 1
 # Parallel cores
 parallel_cores <- 4
 
+fetch_bdq_focos <- function(output_file, reference_date = as_date(now(tzone = "UTC"))) {
+  bdq_base_url <- "https://dataserver-coids.inpe.br/queimadas/queimadas/focos/csv/diario/America_Sul/"
+  file_names <- paste0(
+    "focos_diario_",
+    format(seq.Date(reference_date - 2, reference_date, by = "day"), "%Y%m%d"),
+    ".csv"
+  )
+  urls <- paste0(bdq_base_url, file_names)
+  cli_h2("Fetch BDQueimadas / INPE data")
+  cli_alert("Fetching data...")
+  fires <- map_dfr(urls, function(url) {
+    tryCatch(
+      retry(
+        expr = {
+          read_csv(file = url, show_col_types = FALSE) |>
+            filter(satelite %in% c("AQUA_M-M", "AQUA_M-T")) |>
+            select(id, lat, lon, data_hora_gmt)
+        },
+        interval = retry_times,
+        max_tries = min(retry_max_tries, 5),
+        until = ~ is.data.frame(.)
+      ),
+      error = function(error) {
+        cli_alert_warning("Could not fetch {url}: {conditionMessage(error)}")
+        data.frame()
+      }
+    )
+  }) |>
+    filter(
+      is.finite(lat), is.finite(lon),
+      between(lat, -90, 90), between(lon, -180, 180)
+    ) |>
+    distinct(id, .keep_all = TRUE) |>
+    arrange(data_hora_gmt)
+  if (!nrow(fires)) stop("BDQueimadas returned no valid active-fire records.")
+
+  dir_create(path_dir(output_file), recurse = TRUE)
+  temporary_file <- tempfile(
+    pattern = ".bdq_focos-", tmpdir = path_dir(output_file), fileext = ".rds"
+  )
+  on.exit(if (file_exists(temporary_file)) file_delete(temporary_file), add = TRUE)
+  saveRDS(fires, temporary_file)
+  file_move(temporary_file, output_file)
+  cli_alert_success("Saved {nrow(fires)} unique active-fire records.")
+  invisible(fires)
+}
+
 # Set update reference time
 # https://confluence.ecmwf.int/display/CKB/CAMS%3A+Global+atmospheric+composition+forecast+data+documentation#heading-DataavailabilityHHMM
 # 00 UTC forecast data availability guaranteed by 10:00 UTC -> update at ~7am BR
@@ -105,6 +152,26 @@ date <- forecast_cycle$date
 time <- forecast_cycle$time
 
 cli_alert_info("Update reference: {date} {time}")
+
+cycle_id <- paste(date, time, sep = "T")
+generation_marker <- path(app_data, ".cams_generation")
+published_cycle <- if (file_exists(generation_marker)) {
+  trimws(readLines(generation_marker, n = 1L, warn = FALSE))
+} else {
+  character()
+}
+force_update <- tolower(Sys.getenv("CAMS_FORCE_UPDATE", unset = "false")) %in%
+  c("1", "true", "yes")
+if (!force_update && identical(published_cycle, cycle_id)) {
+  fetch_bdq_focos(path(app_data, "bdq_focos.rds"))
+  cli_alert_success("Forecast cycle {cycle_id} is already published; nothing to download.")
+  ntfy_send(
+    message = glue("Update skipped: CAMS cycle {cycle_id} is already published."),
+    tags = tags$white_check_mark,
+    topic = ntfy_topic
+  )
+  quit(save = "no", status = 0L)
+}
 
 # File names
 file_name_pm25 <- glue(
@@ -143,6 +210,12 @@ file_name_so2_mc <- glue(
 file_name_temp <- glue(
   "cams_forecast_temp.nc"
 )
+file_name_temp_ml137 <- glue(
+  "cams_forecast_temp_ml137.nc"
+)
+file_name_q_ml137 <- glue(
+  "cams_forecast_q_ml137.nc"
+)
 file_name_uv <- glue(
   "cams_forecast_uv.nc"
 )
@@ -165,8 +238,10 @@ file_name_iqar <- glue(
   "iqar.nc"
 )
 
-# Remove old forecast files
-file_delete(list.files(dir_data, full.names = TRUE))
+# Remove old staging files. Published files remain available to the dashboard
+# until the complete new generation is ready.
+staging_files <- list.files(dir_data, full.names = TRUE, all.files = TRUE, no.. = TRUE)
+if (length(staging_files)) file_delete(staging_files)
 
 # Municipalities
 cli_alert("Reading geometries file...")
@@ -278,7 +353,36 @@ request_so2 <- list(
   target = file_name_so2
 )
 
-## Temperature
+## Temperature and specific humidity at model level 137
+request_temp_ml137 <- list(
+  dataset_short_name = "cams-global-atmospheric-composition-forecasts",
+  variable = "temperature",
+  model_level = "137",
+  date = glue("{date}/{date}"),
+  time = time,
+  leadtime_hour = leadtime_hour_level,
+  type = "forecast",
+  data_format = "netcdf",
+  download_format = "unarchived",
+  area = bbox,
+  target = file_name_temp_ml137
+)
+
+request_q_ml137 <- list(
+  dataset_short_name = "cams-global-atmospheric-composition-forecasts",
+  variable = "specific_humidity",
+  model_level = "137",
+  date = glue("{date}/{date}"),
+  time = time,
+  leadtime_hour = leadtime_hour_level,
+  type = "forecast",
+  data_format = "netcdf",
+  download_format = "unarchived",
+  area = bbox,
+  target = file_name_q_ml137
+)
+
+## 2 m temperature shown in the dashboard
 request_temp <- list(
   dataset_short_name = "cams-global-atmospheric-composition-forecasts",
   variable = "2m_temperature",
@@ -476,7 +580,37 @@ retry(
 )
 cli_alert_success("Done!")
 
-cli_alert("Temperature")
+cli_alert("Temperature at model level 137")
+retry(
+  expr = {
+    wf_request(
+      request = request_temp_ml137,
+      transfer = TRUE,
+      path = dir_data
+    )
+  },
+  interval = retry_times,
+  max_tries = retry_max_tries,
+  until = ~ is_file(as.character(.))
+)
+cli_alert_success("Done!")
+
+cli_alert("Specific humidity at model level 137")
+retry(
+  expr = {
+    wf_request(
+      request = request_q_ml137,
+      transfer = TRUE,
+      path = dir_data
+    )
+  },
+  interval = retry_times,
+  max_tries = retry_max_tries,
+  until = ~ is_file(as.character(.))
+)
+cli_alert_success("Done!")
+
+cli_alert("2 m temperature")
 retry(
   expr = {
     wf_request(
@@ -566,90 +700,84 @@ retry(
 )
 cli_alert_success("Done!")
 
-cli_h2("Validate pollutant raster geometry and layer counts")
+cli_h2("Validate model-level raster geometry and layer counts")
 
-pm25 <- rast(x = path(dir_data, file_name_pm25))
-o3 <- rast(x = path(dir_data, file_name_o3))
-co <- rast(x = path(dir_data, file_name_co))
-no2 <- rast(x = path(dir_data, file_name_no2))
-so2 <- rast(x = path(dir_data, file_name_so2))
+pm25 <- rast(path(dir_data, file_name_pm25))
+sp <- rast(path(dir_data, file_name_sp))
+o3 <- rast(path(dir_data, file_name_o3))
+co <- rast(path(dir_data, file_name_co))
+no2 <- rast(path(dir_data, file_name_no2))
+so2 <- rast(path(dir_data, file_name_so2))
+temp_ml137 <- rast(path(dir_data, file_name_temp_ml137))
+q_ml137 <- rast(path(dir_data, file_name_q_ml137))
 
-gas_rasters <- list(O3 = o3, CO = co, NO2 = no2, SO2 = so2)
-gas_geometry_matches <- vapply(
-  gas_rasters,
+model_level_rasters <- list(
+  O3 = o3, CO = co, NO2 = no2, SO2 = so2,
+  temperature = temp_ml137, specific_humidity = q_ml137
+)
+geometry_matches <- vapply(
+  model_level_rasters,
   function(x) {
     compareGeom(
-      pm25,
-      x,
-      lyrs = FALSE,
-      crs = TRUE,
-      ext = TRUE,
-      rowcol = TRUE,
-      res = TRUE,
-      stopOnError = FALSE
+      pm25, x, lyrs = FALSE, crs = TRUE, ext = TRUE, rowcol = TRUE,
+      res = TRUE, stopOnError = FALSE
     )
   },
   logical(1)
 )
-
-if (any(!gas_geometry_matches)) {
+if (any(!geometry_matches)) {
   cli_alert_warning(
-    "Geometry differs for {paste(names(gas_geometry_matches)[!gas_geometry_matches], collapse = ', ')}; these rasters will be aligned before conversion."
+    "Geometry differs for {paste(names(geometry_matches)[!geometry_matches], collapse = ', ')}; these rasters will be aligned before conversion."
   )
 }
-
-gas_layer_counts <- vapply(gas_rasters, nlyr, numeric(1))
-if (nlyr(pm25) != 121 || any(gas_layer_counts != 41)) {
-  cli_abort("Unexpected number of pollutant forecast layers.")
+model_level_counts <- vapply(model_level_rasters, nlyr, numeric(1))
+if (nlyr(pm25) != 121 || nlyr(sp) != 121 || any(model_level_counts != 41)) {
+  cli_abort("Unexpected number of forecast layers.")
 }
 cli_alert_success("Done!")
 
 cli_h2("Compute gas indicators to different units")
-# https://forum.ecmwf.int/t/convert-mass-mixing-ratio-mmr-to-mass-concentration-or-to-volume-mixing-ratio-vmr/1253
+# CAMS gas fields are mass mixing ratios per kg of dry air. Temperature and
+# specific humidity are taken at the same model level as the gases. Pressure at
+# full model level 137 is derived from the adjacent IFS L137 half levels.
 
-sp <- rast(x = path(dir_data, file_name_sp))
-temp <- rast(x = path(dir_data, file_name_temp))
-o3 <- rast(x = path(dir_data, file_name_o3))
-co <- rast(x = path(dir_data, file_name_co))
-no2 <- rast(x = path(dir_data, file_name_no2))
-so2 <- rast(x = path(dir_data, file_name_so2))
-
-# Match the hourly meteorological fields to the 3-hourly gas fields
-met_layers <- seq(1, 121, 3)
-dry_air_gas_constant <- 287.058 # J/(kg K)
-air_density <- sp[[met_layers]] /
-  (dry_air_gas_constant * temp[[met_layers]]) # kg/m3
-
-# Align model-level fields to the surface-field grid in memory. This avoids
-# differences in NetCDF geometry interpretation across terra/GDAL versions
-# without overwriting the downloaded source files.
-align_to_surface_grid <- function(x, reference, pollutant) {
+align_to_surface_grid <- function(x, reference, field) {
   geometry_matches <- compareGeom(
-    x,
-    reference,
-    lyrs = FALSE,
-    crs = TRUE,
-    ext = TRUE,
-    rowcol = TRUE,
-    res = TRUE,
-    stopOnError = FALSE
+    x, reference, lyrs = FALSE, crs = TRUE, ext = TRUE, rowcol = TRUE,
+    res = TRUE, stopOnError = FALSE
   )
-
   if (!geometry_matches) {
-    cli_alert_warning("Aligning {pollutant} to the surface-field grid.")
+    cli_alert_warning("Aligning {field} to the surface-field grid.")
     x <- resample(x, reference, method = "bilinear")
   }
-
   x
 }
 
-o3 <- align_to_surface_grid(o3, air_density, "O3")
-co <- align_to_surface_grid(co, air_density, "CO")
-no2 <- align_to_surface_grid(no2, air_density, "NO2")
-so2 <- align_to_surface_grid(so2, air_density, "SO2")
+met_layers <- seq(1, 121, 3)
+sp_ml137_reference <- sp[[met_layers]]
+temp_ml137 <- align_to_surface_grid(temp_ml137, sp_ml137_reference, "temperature")
+q_ml137 <- align_to_surface_grid(q_ml137, sp_ml137_reference, "specific humidity")
+o3 <- align_to_surface_grid(o3, sp_ml137_reference, "O3")
+co <- align_to_surface_grid(co, sp_ml137_reference, "CO")
+no2 <- align_to_surface_grid(no2, sp_ml137_reference, "NO2")
+so2 <- align_to_surface_grid(so2, sp_ml137_reference, "SO2")
+
+# IFS L137 half-level coefficients: level 136 has A=0, B=0.997630;
+# level 137 (surface) has A=0, B=1. Full-level pressure is their mean.
+p_half_above <- 0.997630 * sp_ml137_reference
+p_half_below <- sp_ml137_reference
+pressure_ml137 <- (p_half_above + p_half_below) / 2
+
+# q is water-vapour mass divided by moist-air mass. Convert total moist-air
+# density to dry-air density because CAMS gas MMR uses kg of dry air.
+dry_air_gas_constant <- 287.058 # J/(kg K)
+epsilon <- 0.621981 # ratio of dry-air to water-vapour gas constants
+virtual_temperature <- temp_ml137 * (1 + (1 / epsilon - 1) * q_ml137)
+moist_air_density <- pressure_ml137 / (dry_air_gas_constant * virtual_temperature)
+dry_air_density <- (1 - q_ml137) * moist_air_density
 
 # Use forecast periods as the layer dimension in converted gas files
-gas_forecast_period <- depth(air_density)
+gas_forecast_period <- depth(pressure_ml137)
 depth(o3) <- gas_forecast_period
 depth(co) <- gas_forecast_period
 depth(no2) <- gas_forecast_period
@@ -660,7 +788,7 @@ depthName(no2) <- "forecast_period"
 depthName(so2) <- "forecast_period"
 
 cli_alert("O3 (kg/kg to kg/m3)")
-o3_mc <- o3 * air_density
+o3_mc <- o3 * dry_air_density
 writeCDF(
   x = o3_mc,
   filename = path(dir_data, file_name_o3_mc),
@@ -686,7 +814,7 @@ writeCDF(
 cli_alert_success("Done!")
 
 cli_alert("NO2 (kg/kg to kg/m3)")
-no2_mc <- no2 * air_density
+no2_mc <- no2 * dry_air_density
 writeCDF(
   x = no2_mc,
   filename = path(dir_data, file_name_no2_mc),
@@ -698,7 +826,7 @@ writeCDF(
 cli_alert_success("Done!")
 
 cli_alert("SO2 (kg/kg to kg/m3)")
-so2_mc <- so2 * air_density
+so2_mc <- so2 * dry_air_density
 writeCDF(
   x = so2_mc,
   filename = path(dir_data, file_name_so2_mc),
@@ -709,7 +837,7 @@ writeCDF(
 )
 cli_alert_success("Done!")
 
-cli_h2("Compute IQAr")
+cli_h2("Compute instantaneous air-quality indicator")
 rst_pm25 <- terra::rast(path(dir_data, file_name_pm25))
 rst_pm10 <- terra::rast(path(dir_data, file_name_pm10))
 rst_o3 <- terra::rast(path(dir_data, file_name_o3_mc))
@@ -840,614 +968,59 @@ forecast_sequence <- function(step_hours) {
   forecast_start + hours(seq.int(0L, 120L, by = step_hours))
 }
 
-cli_h3("IQAr")
-
-# Read CAMS file
-cli_alert("Reading forecast file...")
-rst_iqar <- terra::rast(path(dir_data, file_name_iqar))
-cli_alert("Projecting raster file...")
-rst_iqar <- project(x = rst_iqar, "EPSG:4326")
-
-# Zonal statistic function
-agg_iqar <- function(rst, x, fun) {
-  # Zonal statistic computation
-  tmp <- exact_extract(x = rst[[x]], y = mun, fun = fun, progress = FALSE)
-
-  # Date and time
-  seq_dates <- forecast_sequence(3L)
-
-  # Table output with unit conversion and rounding
-  res <- tibble(
-    code_muni = mun$code_muni,
-    date = seq_dates[x],
-    value = round(x = tmp, digits = 2),
-  ) |>
-    mutate(
-      date = with_tz(date, "America/Sao_Paulo")
-    )
-
-  # Write to database
-  dbWriteTable(conn = con, name = tb_name_iqar, value = res, append = TRUE)
-
-  return(TRUE)
-}
-
-# Compute zonal mean
-cli_alert("Computing zonal mean...")
-res_mean_iqar <- map(
-  .x = 1:41,
-  .f = agg_iqar,
-  rst = rst_iqar,
-  fun = "mean",
-  .progress = TRUE
-)
-cli_alert_success("Done!")
-
-# Check data
-cli_alert("Checking data...")
-tbl(con, tb_name_iqar) |> tally()
-tbl(con, tb_name_iqar) |> head()
-
-cli_h3("PM 2.5")
-
-# Read CAMS file
-cli_alert("Reading forecast file...")
-rst_pm25 <- terra::rast(path(dir_data, file_name_pm25))
-cli_alert("Projecting raster file...")
-rst_pm25 <- project(x = rst_pm25, "EPSG:4326")
-
-# Zonal statistic function
-agg_pm25 <- function(rst, x, fun) {
-  # Zonal statistic computation
-  tmp <- exact_extract(x = rst[[x]], y = mun, fun = fun, progress = FALSE)
-
-  # Date and time
-  seq_dates <- forecast_sequence(1L)
-
-  # Table output with unit conversion and rounding
-  res <- tibble(
-    code_muni = mun$code_muni,
-    date = seq_dates[x],
-    value = round(x = tmp * 1e9, digits = 2), # kg/m3 to μg/m3
-  ) |>
-    mutate(
-      date = with_tz(date, "America/Sao_Paulo")
-    )
-
-  # Write to database
-  dbWriteTable(conn = con, name = tb_name_pm25, value = res, append = TRUE)
-
-  return(TRUE)
-}
-
-# Compute zonal mean
-cli_alert("Computing zonal mean...")
-res_mean_pm25 <- map(
-  .x = 1:121,
-  .f = agg_pm25,
-  rst = rst_pm25,
-  fun = "mean",
-  .progress = TRUE
-)
-cli_alert_success("Done!")
-
-# Check data
-cli_alert("Checking data...")
-tbl(con, tb_name_pm25) |> tally()
-tbl(con, tb_name_pm25) |> head()
-
-cli_h3("PM 10")
-
-# Read CAMS file
-cli_alert("Reading forecast file...")
-rst_pm10 <- terra::rast(path(dir_data, file_name_pm10))
-cli_alert("Projecting raster file...")
-rst_pm10 <- project(x = rst_pm10, "EPSG:4326")
-
-# Zonal statistic function
-agg_pm10 <- function(rst, x, fun) {
-  # Zonal statistic computation
-  tmp <- exact_extract(x = rst[[x]], y = mun, fun = fun, progress = FALSE)
-
-  # Date and time
-  seq_dates <- forecast_sequence(1L)
-
-  # Table output with unit conversion and rounding
-  res <- tibble(
-    code_muni = mun$code_muni,
-    date = seq_dates[x],
-    value = round(x = tmp * 1e9, digits = 2), # kg/m3 to μg/m3
-  ) |>
-    mutate(
-      date = with_tz(date, "America/Sao_Paulo")
-    )
-
-  # Write to database
-  dbWriteTable(conn = con, name = tb_name_pm10, value = res, append = TRUE)
-
-  return(TRUE)
-}
-
-# Compute zonal mean
-cli_alert("Computing zonal mean...")
-res_mean_pm10 <- map(
-  .x = 1:121,
-  .f = agg_pm10,
-  rst = rst_pm10,
-  fun = "mean",
-  .progress = TRUE
-)
-cli_alert_success("Done!")
-
-# Check data
-cli_alert("Checking data...")
-tbl(con, tb_name_pm10) |> tally()
-tbl(con, tb_name_pm10) |> head()
-
-cli_h3("O3")
-
-# Read CAMS file
-cli_alert("Reading forecast file...")
-rst_o3 <- terra::rast(path(dir_data, file_name_o3_mc))
-cli_alert("Projecting raster file...")
-rst_o3 <- project(x = rst_o3, "EPSG:4326")
-
-# Zonal statistic function
-agg_o3 <- function(rst, x, fun) {
-  # Zonal statistic computation
-  tmp <- exact_extract(x = rst[[x]], y = mun, fun = fun, progress = FALSE)
-
-  # Date and time
-  seq_dates <- forecast_sequence(3L)
-
-  # Table output with unit conversion and rounding
-  res <- tibble(
-    code_muni = mun$code_muni,
-    date = seq_dates[x],
-    value = round(x = tmp * 1e9, digits = 2), # kg/m3 to μg/m3
-  ) |>
-    mutate(
-      date = with_tz(date, "America/Sao_Paulo")
-    )
-
-  # Write to database
-  dbWriteTable(conn = con, name = tb_name_o3, value = res, append = TRUE)
-
-  return(TRUE)
-}
-
-# Compute zonal mean
-cli_alert("Computing zonal mean...")
-res_mean_o3 <- map(
-  .x = 1:41,
-  .f = agg_o3,
-  rst = rst_o3,
-  fun = "mean",
-  .progress = TRUE
-)
-cli_alert_success("Done!")
-
-# Check data
-cli_alert("Checking data...")
-tbl(con, tb_name_o3) |> tally()
-tbl(con, tb_name_o3) |> head()
-
-
-cli_h3("CO")
-
-# Read CAMS file
-cli_alert("Reading forecast file...")
-rst_co <- terra::rast(path(dir_data, file_name_co_mc))
-cli_alert("Projecting raster file...")
-rst_co <- project(x = rst_co, "EPSG:4326")
-
-# Zonal statistic function
-agg_co <- function(rst, x, fun) {
-  # Zonal statistic computation
-  tmp <- exact_extract(x = rst[[x]], y = mun, fun = fun, progress = FALSE)
-
-  # Date and time
-  seq_dates <- forecast_sequence(3L)
-
-  # Table output with unit conversion and rounding
-  res <- tibble(
-    code_muni = mun$code_muni,
-    date = seq_dates[x],
-    value = round(x = tmp, digits = 2), # PPM
-  ) |>
-    mutate(
-      date = with_tz(date, "America/Sao_Paulo")
-    )
-
-  # Write to database
-  dbWriteTable(conn = con, name = tb_name_co, value = res, append = TRUE)
-
-  return(TRUE)
-}
-
-# Compute zonal mean
-cli_alert("Computing zonal mean...")
-res_mean_co <- map(
-  .x = 1:41,
-  .f = agg_co,
-  rst = rst_co,
-  fun = "mean",
-  .progress = TRUE
-)
-cli_alert_success("Done!")
-
-# Check data
-cli_alert("Checking data...")
-tbl(con, tb_name_co) |> tally()
-tbl(con, tb_name_co) |> head()
-
-
-cli_h3("NO2")
-
-# Read CAMS file
-cli_alert("Reading forecast file...")
-rst_no2 <- terra::rast(path(dir_data, file_name_no2_mc))
-cli_alert("Projecting raster file...")
-rst_no2 <- project(x = rst_no2, "EPSG:4326")
-
-# Zonal statistic function
-agg_no2 <- function(rst, x, fun) {
-  # Zonal statistic computation
-  tmp <- exact_extract(x = rst[[x]], y = mun, fun = fun, progress = FALSE)
-
-  # Date and time
-  seq_dates <- forecast_sequence(3L)
-
-  # Table output with unit conversion and rounding
-  res <- tibble(
-    code_muni = mun$code_muni,
-    date = seq_dates[x],
-    value = round(x = tmp * 1e9, digits = 2), # kg/m3 to μg/m3
-  ) |>
-    mutate(
-      date = with_tz(date, "America/Sao_Paulo")
-    )
-
-  # Write to database
-  dbWriteTable(conn = con, name = tb_name_no2, value = res, append = TRUE)
-
-  return(TRUE)
-}
-
-# Compute zonal mean
-cli_alert("Computing zonal mean...")
-res_mean_no2 <- map(
-  .x = 1:41,
-  .f = agg_no2,
-  rst = rst_no2,
-  fun = "mean",
-  .progress = TRUE
-)
-cli_alert_success("Done!")
-
-# Check data
-cli_alert("Checking data...")
-tbl(con, tb_name_no2) |> tally()
-tbl(con, tb_name_no2) |> head()
-
-
-cli_h3("SO2")
-
-# Read CAMS file
-cli_alert("Reading forecast file...")
-rst_so2 <- terra::rast(path(dir_data, file_name_so2_mc))
-cli_alert("Projecting raster file...")
-rst_so2 <- project(x = rst_so2, "EPSG:4326")
-
-# Zonal statistic function
-agg_so2 <- function(rst, x, fun) {
-  # Zonal statistic computation
-  tmp <- exact_extract(x = rst[[x]], y = mun, fun = fun, progress = FALSE)
-
-  # Date and time
-  seq_dates <- forecast_sequence(3L)
-
-  # Table output with unit conversion and rounding
-  res <- tibble(
-    code_muni = mun$code_muni,
-    date = seq_dates[x],
-    value = round(x = tmp * 1e9, digits = 2), # kg/m3 to μg/m3
-  ) |>
-    mutate(
-      date = with_tz(date, "America/Sao_Paulo")
-    )
-
-  # Write to database
-  dbWriteTable(conn = con, name = tb_name_so2, value = res, append = TRUE)
-
-  return(TRUE)
-}
-
-# Compute zonal mean
-cli_alert("Computing zonal mean...")
-res_mean_so2 <- map(
-  .x = 1:41,
-  .f = agg_so2,
-  rst = rst_so2,
-  fun = "mean",
-  .progress = TRUE
-)
-cli_alert_success("Done!")
-
-# Check data
-cli_alert("Checking data...")
-tbl(con, tb_name_so2) |> tally()
-tbl(con, tb_name_so2) |> head()
-
-
-cli_h3("Temperature")
-
-# Read CAMS file
-cli_alert("Reading forecast file...")
-rst_temp <- terra::rast(path(dir_data, file_name_temp))
-cli_alert("Projecting raster file...")
-rst_temp <- project(x = rst_temp, "EPSG:4326")
-
-# Zonal statistic function
-agg_temp <- function(rst, x, fun) {
-  # Zonal statistic computation
-  tmp <- exact_extract(x = rst[[x]], y = mun, fun = fun, progress = FALSE)
-
-  # Date and time
-  seq_dates <- forecast_sequence(1L)
-
-  # Table output with unit conversion and rounding
-  res <- tibble(
-    code_muni = mun$code_muni,
-    date = seq_dates[x],
-    value = round(x = tmp - 272.15, digits = 2), # K to °C
-  ) |>
-    mutate(
-      date = with_tz(date, "America/Sao_Paulo")
-    )
-
-  # Write to database
-  dbWriteTable(conn = con, name = tb_name_temp, value = res, append = TRUE)
-
-  return(TRUE)
-}
-
-# Compute zonal mean
-cli_alert("Computing zonal mean...")
-res_mean_temp <- map(
-  .x = 1:121,
-  .f = agg_temp,
-  rst = rst_temp,
-  fun = "mean",
-  .progress = TRUE
-)
-cli_alert_success("Done!")
-
-# Check data
-cli_alert("Checking data...")
-tbl(con, tb_name_temp) |> tally()
-tbl(con, tb_name_temp) |> head()
-
-cli_h3("UV")
-
-# Read CAMS file
-cli_alert("Reading forecast file...")
-rst_uv <- terra::rast(path(dir_data, file_name_uv))
-cli_alert("Projecting raster file...")
-rst_uv <- project(x = rst_uv, "EPSG:4326")
-
-# Zonal statistic function
-agg_uv <- function(rst, x, fun) {
-  # Zonal statistic computation
-  tmp <- exact_extract(x = rst[[x]], y = mun, fun = fun, progress = FALSE)
-
-  # Date and time
-  seq_dates <- forecast_sequence(1L)
-
-  # Table output with unit conversion and rounding
-  res <- tibble(
-    code_muni = mun$code_muni,
-    date = seq_dates[x],
-    value = round(x = tmp * 40, digits = 2), # Wm2 to UVI
-  ) |>
-    mutate(
-      date = with_tz(date, "America/Sao_Paulo")
-    )
-
-  # Write to database
-  dbWriteTable(conn = con, name = tb_name_uv, value = res, append = TRUE)
-
-  return(TRUE)
-}
-
-# Compute zonal mean
-cli_alert("Computing zonal mean...")
-res_mean_uv <- map(
-  .x = 1:121,
-  .f = agg_uv,
-  rst = rst_uv,
-  fun = "mean",
-  .progress = TRUE
-)
-cli_alert_success("Done!")
-
-# Check data
-cli_alert("Checking data...")
-tbl(con, tb_name_uv) |> tally()
-tbl(con, tb_name_uv) |> head()
-
-cli_h3("Wind speed")
-
-# Read CAMS file
-cli_alert("Reading forecast file...")
-rst_wind_speed <- terra::rast(path(dir_data, file_name_wind_speed))
-cli_alert("Projecting raster file...")
-rst_wind_speed <- project(x = rst_wind_speed, "EPSG:4326")
-
-# Zonal statistic function
-agg_wind_speed <- function(rst, x, fun) {
-  # Zonal statistic computation
-  tmp <- exact_extract(x = rst[[x]], y = mun, fun = fun, progress = FALSE)
-
-  # Date and time
-  seq_dates <- forecast_sequence(1L)
-
-  # Table output with unit conversion and rounding
-  res <- tibble(
-    code_muni = mun$code_muni,
-    date = seq_dates[x],
-    value = round(x = tmp, digits = 2),
-  ) |>
-    mutate(
-      date = with_tz(date, "America/Sao_Paulo")
-    )
-
-  # Write to database
-  dbWriteTable(
-    conn = con,
-    name = tb_name_wind_speed,
-    value = res,
-    append = TRUE
+aggregate_municipal_forecast <- function(label, filename, table, step, scale = 1, offset = 0) {
+  cli_h3(label)
+  cli_alert("Reading and aggregating forecast file...")
+  rst <- terra::rast(path(dir_data, filename))
+  if (!terra::same.crs(rst, mun)) {
+    cli_alert("Projecting raster file...")
+    rst <- terra::project(rst, terra::crs(mun))
+  }
+  layer_dates <- forecast_sequence(step)
+  if (terra::nlyr(rst) != length(layer_dates)) {
+    cli_abort("Unexpected layer count for {label}: {terra::nlyr(rst)}.")
+  }
+  means <- as.matrix(exact_extract(rst, mun, "mean", progress = FALSE))
+  result <- tibble(
+    code_muni = rep(mun$code_muni, times = terra::nlyr(rst)),
+    date = rep(with_tz(layer_dates, "America/Sao_Paulo"), each = nrow(mun)),
+    value = round(as.vector(means) * scale + offset, digits = 2)
   )
-
-  return(TRUE)
+  dbWriteTable(con, table, result, overwrite = TRUE)
+  quoted_table <- as.character(dbQuoteIdentifier(con, table))
+  quoted_index <- as.character(dbQuoteIdentifier(con, paste0(table, "_code_date_idx")))
+  dbExecute(con, paste0("CREATE INDEX ", quoted_index, " ON ", quoted_table, " (code_muni, date)"))
+  cli_alert_success("Done: {nrow(result)} rows.")
+  invisible(NULL)
 }
 
-# Compute zonal mean
-cli_alert("Computing zonal mean...")
-res_mean_wind_speed <- map(
-  .x = 1:121,
-  .f = agg_wind_speed,
-  rst = rst_wind_speed,
-  fun = "mean",
-  .progress = TRUE
+forecast_tables <- tribble(
+  ~label, ~filename, ~table, ~step, ~scale, ~offset,
+  "Instantaneous air-quality indicator", file_name_iqar, "iqar_mun_forecast", 3L, 1, 0,
+  "PM 2.5", file_name_pm25, "pm25_mun_forecast", 1L, 1e9, 0,
+  "PM 10", file_name_pm10, "pm10_mun_forecast", 1L, 1e9, 0,
+  "O3", file_name_o3_mc, "o3_mun_forecast", 3L, 1e9, 0,
+  "CO", file_name_co_mc, "co_mun_forecast", 3L, 1, 0,
+  "NO2", file_name_no2_mc, "no2_mun_forecast", 3L, 1e9, 0,
+  "SO2", file_name_so2_mc, "so2_mun_forecast", 3L, 1e9, 0,
+  "Temperature", file_name_temp, "temp_mun_forecast", 1L, 1, -273.15,
+  "UV", file_name_uv, "uv_mun_forecast", 1L, 40, 0,
+  "Wind speed", file_name_wind_speed, "wind_speed_mun_forecast", 1L, 1, 0,
+  "Aerosol", file_name_aerosol, "aerosol_mun_forecast", 1L, 1, 0,
+  "Precipitation", file_name_prec, "prec_mun_forecast", 1L, 1e3, 0
 )
-cli_alert_success("Done!")
-
-# Check data
-cli_alert("Checking data...")
-tbl(con, tb_name_wind_speed) |> tally()
-tbl(con, tb_name_wind_speed) |> head()
-
-cli_h3("Aerosol")
-
-# Read CAMS file
-cli_alert("Reading forecast file...")
-rst_aerosol <- terra::rast(path(dir_data, file_name_aerosol))
-cli_alert("Projecting raster file...")
-rst_aerosol <- project(x = rst_aerosol, "EPSG:4326")
-
-# Zonal statistic function
-agg_aerosol <- function(rst, x, fun) {
-  # Zonal statistic computation
-  tmp <- exact_extract(x = rst[[x]], y = mun, fun = fun, progress = FALSE)
-
-  # Date and time
-  seq_dates <- forecast_sequence(1L)
-
-  # Table output with unit conversion and rounding
-  res <- tibble(
-    code_muni = mun$code_muni,
-    date = seq_dates[x],
-    value = round(x = tmp, digits = 2),
-  ) |>
-    mutate(
-      date = with_tz(date, "America/Sao_Paulo")
-    )
-
-  # Write to database
-  dbWriteTable(
-    conn = con,
-    name = tb_name_aerosol,
-    value = res,
-    append = TRUE
-  )
-
-  return(TRUE)
-}
-
-# Compute zonal mean
-cli_alert("Computing zonal mean...")
-res_mean_aerosol <- map(
-  .x = 1:121,
-  .f = agg_aerosol,
-  rst = rst_aerosol,
-  fun = "mean",
-  .progress = TRUE
-)
-cli_alert_success("Done!")
-
-# Check data
-cli_alert("Checking data...")
-tbl(con, tb_name_aerosol) |> tally()
-tbl(con, tb_name_aerosol) |> head()
-
-cli_h3("Precipitation")
-
-# Read CAMS file
-cli_alert("Reading forecast file...")
-rst_prec <- terra::rast(path(dir_data, file_name_prec))
-cli_alert("Projecting raster file...")
-rst_prec <- project(x = rst_prec, "EPSG:4326")
-
-# Zonal statistic function
-agg_prec <- function(rst, x, fun) {
-  # Zonal statistic computation
-  tmp <- exact_extract(x = rst[[x]], y = mun, fun = fun, progress = FALSE)
-
-  # Date and time
-  seq_dates <- forecast_sequence(1L)
-
-  # Table output with unit conversion and rounding
-  res <- tibble(
-    code_muni = mun$code_muni,
-    date = seq_dates[x],
-    value = round(x = tmp * 1e3, digits = 2), # m to mm
-  ) |>
-    mutate(
-      date = with_tz(date, "America/Sao_Paulo")
-    )
-
-  # Write to database
-  dbWriteTable(
-    conn = con,
-    name = tb_name_prec,
-    value = res,
-    append = TRUE
-  )
-
-  return(TRUE)
-}
-
-# Compute zonal mean
-cli_alert("Computing zonal mean...")
-res_mean_prec <- map(
-  .x = 1:121,
-  .f = agg_prec,
-  rst = rst_prec,
-  fun = "mean",
-  .progress = TRUE
-)
-cli_alert_success("Done!")
-
-# Check data
-cli_alert("Checking data...")
-tbl(con, tb_name_prec) |> tally()
-tbl(con, tb_name_prec) |> head()
+pwalk(forecast_tables, aggregate_municipal_forecast)
 
 cli_h3("Wind vectors")
 cli_alert("Computing wind vectors...")
 
-wind2json <- function(rst_u, rst_v, depth, n_round = 2, path) {
+wind2json <- function(rst_u, rst_v, depth, reference_time, forecast_hour,
+                      n_round = 2, path) {
   # Verify compatibility between rst files
-  if (
-    !any(
-      terra::ncol(rst_u) == terra::ncol(rst_v),
-      terra::nrow(rst_u) == terra::nrow(rst_v),
-      terra::res(rst_u) == terra::res(rst_v),
-      terra::ext(rst_u) == terra::ext(rst_v)
-    )
-  ) {
+  if (!compareGeom(
+    rst_u, rst_v, lyrs = TRUE, crs = TRUE, ext = TRUE, rowcol = TRUE,
+    res = TRUE, stopOnError = FALSE
+  )) {
     stop(
       "The rst_u and rst_v files must have the same dimensions and resolution (same number of columns, number of rows, spatial resolution and boundaries extend)."
     )
@@ -1486,7 +1059,8 @@ wind2json <- function(rst_u, rst_v, depth, n_round = 2, path) {
         "lo1" = lo1,
         "la2" = la2,
         "lo2" = lo2,
-        "refTime" = "2017-02-01 23:00:00"
+        "refTime" = reference_time,
+        "forecastTime" = forecast_hour
       ),
       "data" = data_u
     ),
@@ -1505,7 +1079,8 @@ wind2json <- function(rst_u, rst_v, depth, n_round = 2, path) {
         "lo1" = lo1,
         "la2" = la2,
         "lo2" = lo2,
-        "refTime" = "2017-02-01 23:00:00"
+        "refTime" = reference_time,
+        "forecastTime" = forecast_hour
       ),
       "data" = data_v
     )
@@ -1530,6 +1105,8 @@ for (i in 1:121) {
     rst_u = rst_u,
     rst_v = rst_v,
     depth = i,
+    reference_time = format(forecast_start, "%Y-%m-%dT%H:%M:%SZ", tz = "UTC"),
+    forecast_hour = i - 1L,
     n_round = 2,
     path = path(dir_data, paste0("wind_", i, ".json"))
   )
@@ -1542,46 +1119,12 @@ cli_alert("Disconnecting database...")
 dbDisconnect(conn = con)
 
 
-# Fetch INPE BD Queimadas data
-cli_h2("Fetch BDQueimadas / INPE data")
-bdq_base_url <- "https://dataserver-coids.inpe.br/queimadas/queimadas/focos/csv/diario/America_Sul/"
-bdq_file_names <- paste0(
-  "focos_diario_",
-  format(seq.Date(date - 2, date, by = "day"), "%Y%m%d"), # Today and last two days
-  ".csv"
-)
-bdq_urls <- paste0(bdq_base_url, bdq_file_names)
+fetch_bdq_focos(path(dir_data, "bdq_focos.rds"))
 
-cli_alert("Fetching data...")
-bdq_focos <- data.frame()
-for (i in bdq_urls) {
-  # Try and retry download
-  tmp <- retry(
-    expr = {
-      read_csv(file = i, show_col_types = FALSE) |>
-        filter(satelite %in% c("AQUA_M-M", "AQUA_M-T")) |>
-        select(id, lat, lon, data_hora_gmt)
-    },
-    interval = retry_times,
-    max_tries = retry_max_tries,
-    until = ~ is.data.frame(.)
-  )
-
-  bdq_focos <- bind_rows(bdq_focos, tmp)
-  rm(tmp)
-}
-bdq_focos <- bdq_focos |>
-  filter(is.finite(lat), is.finite(lon), between(lat, -90, 90), between(lon, -180, 180)) |>
-  distinct(id, .keep_all = TRUE) |>
-  arrange(data_hora_gmt)
-if (!nrow(bdq_focos)) stop("BDQueimadas returned no valid active-fire records.")
-cli_alert_info("{nrow(bdq_focos)} unique active-fire records downloaded.")
-cli_alert("Saving results...")
-saveRDS(object = bdq_focos, file = path(dir_data, "bdq_focos.rds"))
-cli_alert_success("Done!")
-
-# Move updated files
+# Move updated files. The generation marker is written last; consumers use it
+# as a commit signal and never reload a partially published generation.
 file_move(path = list.files(dir_data, full.names = TRUE), new_path = app_data)
+writeLines(cycle_id, generation_marker, useBytes = TRUE)
 
 # Message
 ntfy_send(
