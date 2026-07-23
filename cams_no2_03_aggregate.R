@@ -9,8 +9,8 @@ library(tools)
 library(purrr)
 
 # Folders
-hourly_data_folder <- "~/Downloads/cams/cams_no2_mc/"
-daily_data_folder <- "~/Downloads/cams/cams_no2_daily_agg/"
+hourly_data_folder <- "/dados2/data/cams/cams_no2_mc/"
+daily_data_folder <- "/dados2/data/cams/cams_no2_daily_agg/"
 
 # List files
 files <- list.files(hourly_data_folder, full.names = TRUE, pattern = "*.nc")
