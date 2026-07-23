@@ -11,8 +11,8 @@ library(tools)
 library(furrr)
 
 # Folders
-original_unit_folder <- "/dados2/data/cams/cams_co/"
-new_unit_folder <- "/dados2/data/cams/cams_co_mc/"
+original_unit_folder <- "/dados2/data/cams_2025/cams/cams_co/"
+new_unit_folder <- "/dados2/data/cams/cams_2025/cams_co_mc/"
 
 dir_create(new_unit_folder)
 

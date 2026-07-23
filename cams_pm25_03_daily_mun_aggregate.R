@@ -33,7 +33,7 @@ dbListTables(con)
 
 # Folders
 cli_alert_info("Listing files...")
-daily_data_folder <- "/dados2/data/cams/cams_pm25_daily_agg/"
+daily_data_folder <- "/dados2/data/cams/cams_2025/cams_pm25_daily_agg/"
 
 # List files
 files_min <- list.files(

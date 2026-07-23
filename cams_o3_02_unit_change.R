@@ -11,11 +11,11 @@ library(tools)
 library(furrr)
 
 # Folders
-original_unit_folder <- "/dados2/data/cams/cams_o3/"
-new_unit_folder <- "/dados2/data/cams/cams_o3_mc/"
+original_unit_folder <- "/dados2/data/cams/cams_2025/cams_o3/"
+new_unit_folder <- "/dados2/data/cams/cams_2025/cams_o3_mc/"
 
-temp_folder <- "/dados2/data/cams/cams_temp"
-sp_folder <- "/dados2/data/cams/cams_sp"
+temp_folder <- "/dados2/data/cams/cams_2025/cams_temp"
+sp_folder <- "/dados2/data/cams/cams_2025/cams_sp"
 
 dir_create(new_unit_folder)
 

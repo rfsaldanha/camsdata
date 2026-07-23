@@ -25,7 +25,7 @@ if (dbExistsTable(con, "so2_min_mean")) {
 dbListTables(con)
 
 # Folders
-daily_data_folder <- "/dados2/data/cams/cams_so2_daily_agg/"
+daily_data_folder <- "/dados2/data/cams/cams_2025/cams_so2_daily_agg/"
 
 # List files
 files_min <- list.files(
