@@ -70,6 +70,22 @@ mun_geo <- path(app_data, "mun_epsg4326.rds")
 dir_create(c(app_data, dir_data), recurse = TRUE)
 if (!file_exists(mun_geo)) stop("Municipality geometry file not found: ", mun_geo)
 
+# Load SESAI dependencies only after the municipal generation is published.
+# Failure in this additional product must not prevent the municipal update.
+run_sesai_update <- function(force = FALSE) {
+  tryCatch({
+    sesai_env <- new.env(parent = baseenv())
+    sys.source(path(script_dir, "R", "forecast_catalog.R"), envir = sesai_env)
+    sys.source(path(script_dir, "R", "sesai_forecast.R"), envir = sesai_env)
+    sesai_env$update_sesai_forecast(
+      data_dir = app_data, source_dir = path(script_dir, "data", "sesai"), force = force
+    )
+  }, error = function(error) {
+    stop("Municipal generation remains published. SESAI update failed: ",
+         conditionMessage(error), call. = FALSE)
+  })
+}
+
 # Forecast range, in hours
 leadtime_hour <- as.character(0:120)
 leadtime_hour_level <- as.character(seq(0, 120, 3))
@@ -165,6 +181,7 @@ force_update <- tolower(Sys.getenv("CAMS_FORCE_UPDATE", unset = "false")) %in%
 if (!force_update && identical(published_cycle, cycle_id)) {
   fetch_bdq_focos(path(app_data, "bdq_focos.rds"))
   cli_alert_success("Forecast cycle {cycle_id} is already published; nothing to download.")
+  run_sesai_update()
   ntfy_send(
     message = glue("Update skipped: CAMS cycle {cycle_id} is already published."),
     tags = tags$white_check_mark,
@@ -994,21 +1011,8 @@ aggregate_municipal_forecast <- function(label, filename, table, step, scale = 1
   invisible(NULL)
 }
 
-forecast_tables <- tribble(
-  ~label, ~filename, ~table, ~step, ~scale, ~offset,
-  "Instantaneous air-quality indicator", file_name_iqar, "iqar_mun_forecast", 3L, 1, 0,
-  "PM 2.5", file_name_pm25, "pm25_mun_forecast", 1L, 1e9, 0,
-  "PM 10", file_name_pm10, "pm10_mun_forecast", 1L, 1e9, 0,
-  "O3", file_name_o3_mc, "o3_mun_forecast", 3L, 1e9, 0,
-  "CO", file_name_co_mc, "co_mun_forecast", 3L, 1, 0,
-  "NO2", file_name_no2_mc, "no2_mun_forecast", 3L, 1e9, 0,
-  "SO2", file_name_so2_mc, "so2_mun_forecast", 3L, 1e9, 0,
-  "Temperature", file_name_temp, "temp_mun_forecast", 1L, 1, -273.15,
-  "UV", file_name_uv, "uv_mun_forecast", 1L, 40, 0,
-  "Wind speed", file_name_wind_speed, "wind_speed_mun_forecast", 1L, 1, 0,
-  "Aerosol", file_name_aerosol, "aerosol_mun_forecast", 1L, 1, 0,
-  "Precipitation", file_name_prec, "prec_mun_forecast", 1L, 1e3, 0
-)
+source(path(script_dir, "R", "forecast_catalog.R"), local = TRUE)
+forecast_tables <- forecast_catalog()
 pwalk(forecast_tables, aggregate_municipal_forecast)
 
 cli_h3("Wind vectors")
@@ -1125,6 +1129,8 @@ fetch_bdq_focos(path(dir_data, "bdq_focos.rds"))
 # as a commit signal and never reload a partially published generation.
 file_move(path = list.files(dir_data, full.names = TRUE), new_path = app_data)
 writeLines(cycle_id, generation_marker, useBytes = TRUE)
+
+run_sesai_update(force = force_update)
 
 # Message
 ntfy_send(

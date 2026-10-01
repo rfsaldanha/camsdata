@@ -63,3 +63,4 @@ datestamp_*
 /forecast_data/**/*.json
 /forecast_data/**/bdq_focos.rds
 /forecast_data/.cams_generation
+/forecast_data/.cams_forecast_sesai.lock/
